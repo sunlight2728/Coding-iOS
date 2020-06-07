@@ -20,13 +20,13 @@
     self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
     if (self) {
         // Initialization code
-       // self.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+        self.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
         self.backgroundColor = kColorTableBG;
         if (!_imgView) {
             _imgView = [UIImageView new];
             [self.contentView addSubview:_imgView];
             [_imgView mas_makeConstraints:^(MASConstraintMaker *make) {
-                make.size.mas_equalTo(CGSizeMake(20, 20));
+                make.size.mas_equalTo(CGSizeMake(22, 22));
                 make.left.equalTo(self.contentView).offset(kPaddingLeftWidth);
                 make.centerY.equalTo(self.contentView);
             }];
@@ -56,6 +56,7 @@
 }
 
 - (void)prepareForReuse{
+    [super prepareForReuse];
     [self removeTip];
     self.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
 }
@@ -98,7 +99,7 @@
 }
 
 + (CGFloat)cellHeight{
-    return 44.0;
+    return 50.0;
 }
 
 @end

@@ -28,7 +28,7 @@
         self.backgroundColor = kColorTableBG;
 
         if (!_proImgView) {
-            _proImgView = [[UIImageView alloc] initWithFrame:CGRectMake(0, 0, kProjectInfoCell_ProImgViewWidth, kProjectInfoCell_ProImgViewWidth)];
+            _proImgView = [[YLImageView alloc] initWithFrame:CGRectMake(0, 0, kProjectInfoCell_ProImgViewWidth, kProjectInfoCell_ProImgViewWidth)];
             _proImgView.layer.cornerRadius = 2.0;
             _proImgView.layer.masksToBounds = YES;
             [self.contentView addSubview:_proImgView];
@@ -49,7 +49,7 @@
             [self.contentView addSubview:_proTitleL];
         }
         if (!_proInfoL) {
-            _proInfoL = [[UITTTAttributedLabel alloc] init];
+            _proInfoL = [[UITTTAttributedLabel alloc] initWithFrame:CGRectZero];
             _proInfoL.delegate = self;
             _proInfoL.linkAttributes = kLinkAttributes;
             _proInfoL.activeLinkAttributes = kLinkAttributesActive;
@@ -95,10 +95,7 @@
         _proInfoL.text = _curProject.owner_user_name;
     }
     _recommendedView.hidden = !(_curProject.recommended.integerValue > 0);
-    // 如果是自己所属的项目才显示箭头
-    if ([self.curProject.owner_id isEqual:[Login curLoginUser].id]) {
-        self.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
-    }
+    self.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
 }
 
 - (void)layoutSubviews{

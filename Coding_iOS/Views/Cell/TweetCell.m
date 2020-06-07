@@ -7,21 +7,21 @@
 //
 
 #define kTweetCell_PadingLeft kPaddingLeftWidth
-#define kTweetCell_PadingTop (65 + 15)
+#define kTweetCell_PadingTop (75 + 15)
 
 #define kTweetCell_PadingBottom 10.0
 #define kTweetCell_ContentWidth (kScreen_Width -kTweetCell_PadingLeft - kPaddingLeftWidth)
 #define kTweetCell_LikeComment_Height 27.0
 #define kTweetCell_LikeComment_Width 50.0
-#define kTweetCell_LikeUserCCell_Height 26.0
-#define kTweetCell_LikeUserCCell_Pading 10.0
+#define kTweetCell_LikeUserCCell_Height 30.0
+#define kTweetCell_LikeUserCCell_Pading 5.0
 #define kTweet_ContentFont [UIFont systemFontOfSize:16]
 #define kTweet_ContentMaxHeight 200.0
 #define kTweet_CommentFont [UIFont systemFontOfSize:14]
 #define kTweet_TimtFont [UIFont systemFontOfSize:12]
 #define kTweet_LikeUsersLineCount 7.0
 
-#define kTweetCell_MaxCollectionNum (kDevice_Is_iPhone6Plus? 12: kDevice_Is_iPhone6? 10 : 9)
+#define kTweetCell_MaxCollectionNum (kDevice_Is_iPhone6Plus? 10: kDevice_Is_iPhone6? 9 : 8)
 
 #import "TweetCell.h"
 #import "TweetLikeUserCCell.h"
@@ -43,6 +43,7 @@
 
 @property (strong, nonatomic) UIView *topView;
 @property (strong, nonatomic) UITapImageView *ownerImgView;
+@property (strong, nonatomic) UIImageView *vipV;
 @property (strong, nonatomic) UIButton *ownerNameBtn;
 @property (strong, nonatomic) UITTTAttributedLabel *contentLabel;
 @property (strong, nonatomic) UILabel *timeLabel, *fromLabel;
@@ -69,13 +70,13 @@
         }
         
         if (!self.ownerImgView) {
-            self.ownerImgView = [[UITapImageView alloc] initWithFrame:CGRectMake(kPaddingLeftWidth, 15 + CGRectGetMaxY(_topView.frame), 38, 38)];
+            self.ownerImgView = [[UITapImageView alloc] initWithFrame:CGRectMake(kPaddingLeftWidth, 15 + CGRectGetMaxY(_topView.frame), 45, 45)];
             [self.ownerImgView doCircleFrame];
             [self.contentView addSubview:self.ownerImgView];
         }
         if (!self.ownerNameBtn) {
             self.ownerNameBtn = [UIButton buttonWithUserStyle];
-            self.ownerNameBtn.frame = CGRectMake(CGRectGetMaxX(self.ownerImgView.frame) + 10, 23 + CGRectGetMaxY(_topView.frame), 50, 20);
+            self.ownerNameBtn.frame = CGRectMake(CGRectGetMaxX(self.ownerImgView.frame) + 15, 23 + CGRectGetMaxY(_topView.frame), 50, 24);
             [self.ownerNameBtn addTarget:self action:@selector(userBtnClicked) forControlEvents:UIControlEventTouchUpInside];
             [self.contentView addSubview:self.ownerNameBtn];
         }
@@ -85,19 +86,20 @@
 //            [self.contentView addSubview:self.timeClockIconView];
 //        }
         if (!self.timeLabel) {
-            self.timeLabel = [[UILabel alloc] initWithFrame:CGRectMake(CGRectGetMinX(self.ownerNameBtn.frame), 0, kScreen_Width/2, 12)];
+            self.timeLabel = [[UILabel alloc] initWithFrame:CGRectMake(CGRectGetMinX(self.ownerNameBtn.frame), 0, kScreen_Width/2, 15)];
 //            self.timeLabel = [[UILabel alloc] initWithFrame:CGRectMake(kScreen_Width - kPaddingLeftWidth - 55, 23 + CGRectGetMaxY(_topView.frame), 55, 12)];
             self.timeLabel.font = kTweet_TimtFont;
 //            self.timeLabel.textAlignment = NSTextAlignmentRight;
-            self.timeLabel.textColor = kColor999;
+            self.timeLabel.textColor = kColorDark7;
             [self.contentView addSubview:self.timeLabel];
         }
         if (!self.contentLabel) {
             self.contentLabel = [[UITTTAttributedLabel alloc] initWithFrame:CGRectMake(kTweetCell_PadingLeft, kTweetCell_PadingTop, kTweetCell_ContentWidth, 20)];
             self.contentLabel.font = kTweet_ContentFont;
-            self.contentLabel.textColor = kColor222;
+            self.contentLabel.textColor = kColorDark3;
             self.contentLabel.numberOfLines = 0;
-            
+            self.contentLabel.lineHeightMultiple = 1.2;
+
             self.contentLabel.linkAttributes = kLinkAttributes;
             self.contentLabel.activeLinkAttributes = kLinkAttributesActive;
             self.contentLabel.delegate = self;
@@ -111,7 +113,7 @@
             [self.contentView addSubview:self.likeBtn];
         }
         if (!self.rewardBtn) {
-            CGRect frame = CGRectMake(kPaddingLeftWidth + kTweetCell_LikeComment_Width + 5, 0, kTweetCell_LikeComment_Width, kTweetCell_LikeComment_Height);
+            CGRect frame = CGRectMake(kPaddingLeftWidth + kTweetCell_LikeComment_Width + 10, 0, kTweetCell_LikeComment_Width, kTweetCell_LikeComment_Height);
             self.rewardBtn = [UIButton tweetBtnWithFrame:frame alignmentLeft:YES];
             [self.rewardBtn addTarget:self action:@selector(rewardBtnClicked:) forControlEvents:UIControlEventTouchUpInside];
             [self.contentView addSubview:self.rewardBtn];
@@ -127,7 +129,7 @@
             self.deleteBtn = [UIButton buttonWithType:UIButtonTypeCustom];
             self.deleteBtn.frame = CGRectMake(kScreen_Width - kPaddingLeftWidth- 2*kTweetCell_LikeComment_Width -5, 0, kTweetCell_LikeComment_Width, kTweetCell_LikeComment_Height);
             [self.deleteBtn setTitle:@"删除" forState:UIControlStateNormal];
-            [self.deleteBtn setTitleColor:kColorBrandGreen forState:UIControlStateNormal];
+            [self.deleteBtn setTitleColor:kColorBrandBlue forState:UIControlStateNormal];
             [self.deleteBtn setTitleColor:[UIColor darkGrayColor] forState:UIControlStateHighlighted];
             self.deleteBtn.titleLabel.font = [UIFont boldSystemFontOfSize:12];
             [self.deleteBtn addTarget:self action:@selector(deleteBtnClicked:) forControlEvents:UIControlEventTouchUpInside];
@@ -141,19 +143,19 @@
             self.locaitonBtn.frame = CGRectMake(kTweetCell_PadingLeft, 0, kScreen_Width - kTweetCell_PadingLeft - kPaddingLeftWidth, 15);
             self.locaitonBtn.titleLabel.adjustsFontSizeToFitWidth = NO;
             self.locaitonBtn.titleLabel.font = [UIFont boldSystemFontOfSize:12];
-            [self.locaitonBtn setTitleColor:kColorBrandGreen forState:UIControlStateNormal];
+            [self.locaitonBtn setTitleColor:kColorBrandBlue forState:UIControlStateNormal];
             [self.locaitonBtn addTarget:self action:@selector(locationBtnClicked:) forControlEvents:UIControlEventTouchUpInside];
             [self.contentView addSubview:self.locaitonBtn];
         }
         if (!self.fromPhoneIconView) {
-            self.fromPhoneIconView = [[UIImageView alloc] initWithFrame:CGRectMake(kPaddingLeftWidth, 0, 11, 11)];
+            self.fromPhoneIconView = [[UIImageView alloc] initWithFrame:CGRectMake(kPaddingLeftWidth, 0, 12, 12)];
             self.fromPhoneIconView.image = [UIImage imageNamed:@"little_phone_icon"];
             [self.contentView addSubview:self.fromPhoneIconView];
         }
         if (!self.fromLabel) {
             self.fromLabel = [[UILabel alloc] initWithFrame:CGRectMake(CGRectGetMaxX(self.fromPhoneIconView.frame) + 5, 0, kScreen_Width/2, 15)];
             self.fromLabel.font = kTweet_TimtFont;
-            self.fromLabel.textColor = kColor999;
+            self.fromLabel.textColor = kColorDark7;
             [self.contentView addSubview:self.fromLabel];
         }
         
@@ -206,6 +208,13 @@
             _commentOrLikeSplitlineView.image = [UIImage imageNamed:@"splitlineImg"];
             [self.contentView addSubview:_commentOrLikeSplitlineView];
         }
+        if (!_vipV) {
+            _vipV = [UIImageView new];
+            [self.contentView addSubview:_vipV];
+            [_vipV mas_makeConstraints:^(MASConstraintMaker *make) {
+                make.right.bottom.equalTo(_ownerImgView);
+            }];
+        }
     }
     return self;
 }
@@ -216,10 +225,10 @@
         return;
     }
     
-    self.likeBtn.hidden = self.rewardBtn.hidden = [_tweet isProjectTweet];
-    
+    self.likeBtn.hidden = self.rewardBtn.hidden = self.commentBtn.hidden = [_tweet isProjectTweet];
+
     _like_reward_users = [_tweet like_reward_users];
-    BOOL isMineTweet = [_tweet.owner.global_key isEqualToString:[Login curLoginUser].global_key];
+    BOOL isMineTweet = [_tweet.owner.global_key isEqualToString:[Login curLoginUser].global_key] || _tweet.project.current_user_role_id.integerValue >= 90;
 
     self.topView.hidden = !_needTopView;
     //owner头像
@@ -227,6 +236,10 @@
     [self.ownerImgView setImageWithUrl:[_tweet.owner.avatar urlImageWithCodePathResizeToView:_ownerImgView] placeholderImage:kPlaceholderMonkeyRoundView(_ownerImgView) tapBlock:^(id obj) {
         [weakSelf userBtnClicked];
     }];
+
+    _vipV.image = [UIImage imageNamed:[NSString stringWithFormat:@"vip_%@_45", _tweet.owner.vip]];
+    _vipV.hidden = kTarget_Enterprise;
+
     //owner姓名
     [self.ownerNameBtn setUserTitle:_tweet.owner.name font:[UIFont systemFontOfSize:17] maxWidth:(kTweetCell_ContentWidth-85)];
     //发出冒泡的时间
@@ -302,8 +315,10 @@
     [self.rewardBtn setTitle:_tweet.rewards.stringValue forState:UIControlStateNormal];
     [self.commentBtn setTitle:_tweet.comments.stringValue forState:UIControlStateNormal];
     
-    [self.deleteBtn setY:curBottomY];
-    self.deleteBtn.hidden = !isMineTweet;
+    CGFloat deleteBtnX = kScreen_Width - kPaddingLeftWidth - kTweetCell_LikeComment_Width - ([_tweet isProjectTweet]? 0: kTweetCell_LikeComment_Width + 5);
+    [self.deleteBtn setOrigin:CGPointMake(deleteBtnX, curBottomY)];
+    
+    self.deleteBtn.hidden = !(isMineTweet && !_tweet.isProjectTweet);
     
     curBottomY += kTweetCell_LikeComment_Height;
     curBottomY += [TweetCell likeCommentBtn_BottomPadingWithTweet:_tweet];
@@ -348,6 +363,9 @@
             self.commentListView.hidden = YES;
         }
     }
+    if ([_tweet isProjectTweet]) {
+        _commentListView.hidden = _commentOrLikeSplitlineView.hidden = _likeUsersView.hidden = _commentOrLikeBeginImgView.hidden = YES;
+    }
 }
 
 + (CGFloat)cellHeightWithObj:(id)obj needTopView:(BOOL)needTopView{
@@ -358,19 +376,35 @@
     cellHeight += [self contentLabelHeightWithTweet:tweet];
     cellHeight += [self contentMediaHeightWithTweet:tweet];
     cellHeight += [self locationAndDeviceHeightWithTweet:tweet];
-    cellHeight += 5+ kTweetCell_LikeComment_Height;
-    cellHeight += [TweetCell likeCommentBtn_BottomPadingWithTweet:tweet];
-    cellHeight += [TweetCell likeUsersHeightWithTweet:tweet];
-    cellHeight += [TweetCell commentListViewHeightWithTweet:tweet];
-    cellHeight += 15;
+    if (!tweet.isProjectTweet) {
+        cellHeight += 5+ kTweetCell_LikeComment_Height;
+        cellHeight += [TweetCell likeCommentBtn_BottomPadingWithTweet:tweet];
+        cellHeight += [TweetCell likeUsersHeightWithTweet:tweet];
+        cellHeight += [TweetCell commentListViewHeightWithTweet:tweet];
+        cellHeight += 15;
+    }
     return ceilf(cellHeight);
 }
 
 + (CGFloat)contentLabelHeightWithTweet:(Tweet *)tweet{
     CGFloat height = 0;
+//    if (tweet.content.length > 0) {
+//        height += MIN(kTweet_ContentMaxHeight, [tweet.content getHeightWithFont:kTweet_ContentFont constrainedToSize:CGSizeMake(kTweetCell_ContentWidth, CGFLOAT_MAX)]);
+//        height += 15;
+//    }
+    static UITTTAttributedLabel *p_contentLabel = nil;
     if (tweet.content.length > 0) {
-        height += MIN(kTweet_ContentMaxHeight, [tweet.content getHeightWithFont:kTweet_ContentFont constrainedToSize:CGSizeMake(kTweetCell_ContentWidth, CGFLOAT_MAX)]);
-        height += 15;
+        if (!p_contentLabel) {
+            p_contentLabel = [[UITTTAttributedLabel alloc] initWithFrame:CGRectMake(kTweetCell_PadingLeft, kTweetCell_PadingTop, kTweetCell_ContentWidth, 20)];
+            p_contentLabel.font = kTweet_ContentFont;
+            p_contentLabel.textColor = kColorDark3;
+            p_contentLabel.numberOfLines = 0;
+            p_contentLabel.lineHeightMultiple = 1.2;
+            p_contentLabel.linkAttributes = kLinkAttributes;
+            p_contentLabel.activeLinkAttributes = kLinkAttributesActive;
+        }
+        [p_contentLabel setLongString:tweet.content withFitWidth:kTweetCell_ContentWidth maxHeight:kTweet_ContentMaxHeight];
+        height += p_contentLabel.height + 15;
     }
     return height;
 }
@@ -416,7 +450,7 @@
 + (CGFloat)likeUsersHeightWithTweet:(Tweet *)tweet{
     CGFloat likeUsersHeight = 0;
     if ([tweet hasLikesOrRewards]) {
-        likeUsersHeight = 45;
+        likeUsersHeight = [TweetLikeUserCCell ccellSize].height + 20;
 //        +30*(ceilf([tweet.like_users count]/kTweet_LikeUsersLineCount)-1);
     }
     return likeUsersHeight;
@@ -494,7 +528,7 @@
             itemSize = [TweetMediaItemCCell ccellSizeWithObj:_tweet.htmlMedia.imageItems.firstObject];
         }
     }else{
-        itemSize = CGSizeMake(kTweetCell_LikeUserCCell_Height, kTweetCell_LikeUserCCell_Height);
+        itemSize = [TweetLikeUserCCell ccellSize];
     }
     return itemSize;
 }
@@ -508,7 +542,7 @@
             insetForSection = UIEdgeInsetsMake(0, 0, 0, 0);
         }
     }else{
-        insetForSection = UIEdgeInsetsMake(kTweetCell_LikeUserCCell_Pading, 5, kTweetCell_LikeUserCCell_Pading, 5);
+        insetForSection = UIEdgeInsetsMake(10, kPaddingLeftWidth, 10, kPaddingLeftWidth);
     }
     return insetForSection;
 }

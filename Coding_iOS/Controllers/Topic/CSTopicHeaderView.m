@@ -84,7 +84,7 @@
         
         for (int i=0; i<userlist.count; i++) {
             User *user = userlist[i];
-            UIImageView *iconView = [[UIImageView alloc] initWithFrame:CGRectMake(0, 57, 42, 42)];
+            UIImageView *iconView = [[YLImageView alloc] initWithFrame:CGRectMake(0, 57, 42, 42)];
             [iconView doCircleFrame];
             iconView.left = 16 + i *(9 + 42);
             if (iconView.right > kScreen_Width) {
@@ -94,6 +94,15 @@
             [self addSubview:iconView];
             
             [iconView sd_setImageWithURL:[user.avatar urlImageWithCodePathResizeToView:iconView] placeholderImage:[UIImage imageNamed:@"placeholder_monkey_round_48"]];
+            
+            {
+                UIImageView *vipV = [UIImageView new];
+                [self addSubview:vipV];
+                [vipV mas_makeConstraints:^(MASConstraintMaker *make) {
+                    make.right.bottom.equalTo(iconView);
+                }];
+                vipV.image = [UIImage imageNamed:[NSString stringWithFormat:@"vip_%@_40", user.vip]];
+            }
             
             [_avatalist addObject:iconView];
         }

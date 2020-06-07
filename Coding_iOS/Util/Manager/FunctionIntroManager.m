@@ -7,7 +7,9 @@
 //
 
 #define kIntroPageKey @"intro_page_version"
-#define kIntroPageNum 3
+#define kIntroPageNum 1
+#define kIntroShowSkipButton (NO)
+#define kIntroShowUseImmediatelyButton (YES)
 
 #import "FunctionIntroManager.h"
 #import "EAIntroView.h"
@@ -31,8 +33,7 @@
 + (BOOL)needToShowIntro{
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     NSString *preVersion = [defaults stringForKey:kIntroPageKey];
-    BOOL needToShow = ![preVersion isEqualToString:kVersionBuild_Coding];
-    needToShow = NO;//不显示了
+    BOOL needToShow = ([kVersion_Coding isEqualToString:@"5.0"] && kIntroPageNum > 0 && ![preVersion isEqualToString:kVersionBuild_Coding]);
     return needToShow;
 }
 
@@ -40,6 +41,16 @@
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     [defaults setValue:kVersionBuild_Coding forKey:kIntroPageKey];
     [defaults synchronize];
+}
+
++ (NSString *)p_imageNameForIndex:(NSInteger)index{
+    NSString *imageName = [NSString stringWithFormat:@"intro_page%ld", (long)index];
+    imageName = [imageName stringByAppendingString:(kDevice_Is_iPhone6Plus? @"_ip6+":
+                                                    kDevice_Is_iPhone6? @"_ip6":
+                                                    kDevice_Is_iPhone5? @"_ip5":
+                                                    kDevice_Is_FullScreen? @"_ipX":
+                                                    @"_ip4")];
+    return imageName;
 }
 
 #pragma mark private M
@@ -81,6 +92,9 @@
 - (UIPageControl *)p_pageControl{
     UIImage *pageIndicatorImage = [UIImage imageNamed:@"intro_page_unselected"];
     UIImage *currentPageIndicatorImage = [UIImage imageNamed:@"intro_page_selected"];
+//    UIImage *pageIndicatorImage = [UIImage imageWithColor:[UIColor colorWithHexString:@"0x0060FF" andAlpha:.5] withFrame:CGRectMake(0, 0, 10, 3)];
+//    UIImage *currentPageIndicatorImage = [UIImage imageWithColor:kColorBrandBlue withFrame:CGRectMake(0, 0, 20, 3)];
+
     if (!kDevice_Is_iPhone6 && !kDevice_Is_iPhone6Plus) {
         CGFloat desginWidth = 375.0;//iPhone6 的设计尺寸
         CGFloat scaleFactor = kScreen_Width/desginWidth;
@@ -109,12 +123,12 @@
 - (UIButton *)p_useImmediatelyButton{
     UIButton *button = [UIButton new];
     [button addTarget:self action:@selector(dismissIntroView) forControlEvents:UIControlEventTouchUpInside];
-    button.titleLabel.font = [UIFont boldSystemFontOfSize:20];
-    button.backgroundColor = kColorBrandGreen;
+    button.titleLabel.font = [UIFont boldSystemFontOfSize:17];
+    button.backgroundColor = kColorBrandBlue;
     [button setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
     [button setTitleColor:[UIColor lightTextColor] forState:UIControlStateHighlighted];
     [button setTitle:@"立即体验" forState:UIControlStateNormal];
-    [button doBorderWidth:0 color:nil cornerRadius:4.0];
+//    [button doBorderWidth:0 color:nil cornerRadius:4.0];
     return button;
 }
 
@@ -123,11 +137,7 @@
 }
 
 - (EAIntroPage *)p_pageWithIndex:(NSInteger)index{
-    NSString *imageName = [NSString stringWithFormat:@"intro_page%ld", (long)index];
-    imageName = [imageName stringByAppendingString:(kDevice_Is_iPhone6Plus? @"_ip6+":
-                                                    kDevice_Is_iPhone6? @"_ip6":
-                                                    kDevice_Is_iPhone5? @"_ip5":
-                                                    @"_ip4")];
+    NSString *imageName = [self.class p_imageNameForIndex:index];
     UIImageView *imageView = [UIImageView new];
     imageView.userInteractionEnabled = YES;
     imageView.contentMode = UIViewContentModeScaleAspectFill;
@@ -135,21 +145,25 @@
     imageView.image = [UIImage imageNamed:imageName];
     imageView.backgroundColor = imageView.image? [UIColor clearColor]: [UIColor randomColor];
     if (index < kIntroPageNum - 1) {
-        UIButton *button = [self p_skipButton];
-        [imageView addSubview:button];
-        [button mas_makeConstraints:^(MASConstraintMaker *make) {
-            make.size.mas_equalTo(CGSizeMake(60, 30));
-            make.top.equalTo(imageView).offset(30);
-            make.right.equalTo(imageView).offset(-20);
-        }];
+        if (kIntroShowSkipButton) {
+            UIButton *button = [self p_skipButton];
+            [imageView addSubview:button];
+            [button mas_makeConstraints:^(MASConstraintMaker *make) {
+                make.size.mas_equalTo(CGSizeMake(60, 30));
+                make.top.equalTo(imageView).offset(10 + kSafeArea_Top);
+                make.right.equalTo(imageView).offset(-20);
+            }];
+        }
     }else{
-        UIButton *button = [self p_useImmediatelyButton];
-        [imageView addSubview:button];
-        [button mas_makeConstraints:^(MASConstraintMaker *make) {
-            make.size.mas_equalTo(CGSizeMake(200, 44));
-            make.centerX.equalTo(imageView);
-            make.bottom.equalTo(imageView).offset(kDevice_Is_iPhone4? -30: -40);
-        }];
+        if (kIntroShowUseImmediatelyButton) {
+            UIButton *button = [self p_useImmediatelyButton];
+            [imageView addSubview:button];
+            [button mas_makeConstraints:^(MASConstraintMaker *make) {
+                make.size.mas_equalTo(CGSizeMake(200, (kDevice_Use_iPhone4_Layout || kDevice_Is_iPhone5)? 50: 55));
+                make.centerX.equalTo(imageView);
+                make.bottom.equalTo(imageView).offset(kDevice_Use_iPhone4_Layout? -40: kDevice_Is_iPhone5? -65: kDevice_Is_iPhone6? -70: kDevice_Is_iPhone6Plus? -90: -120);
+            }];
+        }
     }
     EAIntroPage *page = [EAIntroPage pageWithCustomView:imageView];
     return page;
@@ -157,13 +171,13 @@
 
 #pragma mark EAIntroDelegate
 - (void)intro:(EAIntroView *)introView pageStartScrolling:(EAIntroPage *)page withIndex:(NSUInteger)pageIndex{
-    introView.pageControl.hidden = (pageIndex >= kIntroPageNum - 2);
+    introView.pageControl.hidden = (pageIndex >= kIntroPageNum - 2 && kDevice_Use_iPhone4_Layout);
 }
 - (void)intro:(EAIntroView *)introView pageAppeared:(EAIntroPage *)page withIndex:(NSUInteger)pageIndex{
-    introView.pageControl.hidden = (pageIndex == kIntroPageNum - 1);
+    introView.pageControl.hidden = (pageIndex == kIntroPageNum - 1 && kDevice_Use_iPhone4_Layout);
 }
 - (void)intro:(EAIntroView *)introView pageEndScrolling:(EAIntroPage *)page withIndex:(NSUInteger)pageIndex{
-    introView.pageControl.hidden = (pageIndex == kIntroPageNum - 1);
+    introView.pageControl.hidden = (pageIndex == kIntroPageNum - 1 && kDevice_Use_iPhone4_Layout);
 }
 
 @end

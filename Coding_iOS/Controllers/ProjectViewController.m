@@ -19,12 +19,12 @@
 #import "Coding_NetAPIManager.h"
 #import "UserInfoViewController.h"
 #import "AddUserViewController.h"
-#import "ProjectFolderListView.h"
+#import "NProjectFileListView.h"
 #import "ProjectCodeListView.h"
 #import "CodeListViewController.h"
 #import "CodeViewController.h"
 #import "ProjectMemberActivityListViewController.h"
-#import "FileListViewController.h"
+#import "NFileListViewController.h"
 #import "SettingTextViewController.h"
 #import "FolderToMoveViewController.h"
 #import "FileViewController.h"
@@ -61,6 +61,7 @@
 
 @property (nonatomic, strong)  UIBarButtonItem *screenBar;
 
+@property (strong, nonatomic) CodeTree *myCodeTree;
 
 @end
 
@@ -68,29 +69,35 @@
 
 + (ProjectViewController *)codeVCWithCodeRef:(NSString *)codeRef andProject:(Project *)project{
     ProjectViewController *vc = [self new];
-    vc.codeRef = codeRef;
+    vc.myCodeTree = [CodeTree codeTreeWithRef:codeRef andPath:@""];
     vc.myProject = project;
-    if (vc.myProject.is_public.boolValue) {
-        vc.curIndex = 2;
-    }else{
-        vc.curIndex = 4;
-    }
+    vc.curType = ProjectViewTypeCodes;
     return vc;
 }
+
+- (CodeTree *)myCodeTree{
+    if (!_myCodeTree) {
+        _myCodeTree = [CodeTree codeTreeWithRef:@"master" andPath:@""];
+    }
+    return _myCodeTree;
+}
+
 - (instancetype)init
 {
     self = [super init];
     if (self) {
-        _curIndex = 0;
+        _curType = ProjectViewTypeActivities;
     }
     return self;
 }
+
 - (UIView *)getCurContentView{
-    return [_projectContentDict objectForKey:[NSNumber numberWithInteger:_curIndex]];
+    return [_projectContentDict objectForKey:[NSNumber numberWithInteger:_curType]];
 }
+
 - (void)saveCurContentView:(UIView *)curContentView{
     if (curContentView) {
-        [_projectContentDict setObject:curContentView forKey:[NSNumber numberWithInteger:_curIndex]];
+        [_projectContentDict setObject:curContentView forKey:[NSNumber numberWithInteger:_curType]];
     }
 }
 
@@ -105,7 +112,7 @@
             [self requestForMyProject];
         }else{
             [self configNavBtnWithMyProject];
-            [self refreshWithNewIndex:_curIndex];
+            [self refreshWithNewIndex:_curType];
         }
     }
     UIView *curView = [self getCurContentView];
@@ -118,7 +125,7 @@
         
         _role = TaskRoleTypeAll;
         //初始化过滤目录
-        _myFliterMenu = [[TaskSelectionView alloc] initWithFrame:CGRectMake(0, 64, kScreen_Width, kScreen_Height - 64) items:@[@"所有任务（0）", @"我关注的（0）", @"我创建的（0）"]];
+        _myFliterMenu = [[TaskSelectionView alloc] initWithFrame:CGRectMake(0, 44 + kSafeArea_Top, kScreen_Width, kScreen_Height - (44 + kSafeArea_Top)) items:@[@"所有任务（0）", @"我关注的（0）", @"我创建的（0）"]];
         __weak typeof(self) weakSelf = self;
         _myFliterMenu.clickBlock = ^(NSInteger pageIndex){
             _role = pageIndex;
@@ -150,13 +157,13 @@
                                           ];
         
         _screenView.selectBlock = ^(NSString *keyword, NSString *status, NSString *label) {
-            [((UIButton *)weakSelf.screenBar.customView) setImage:[UIImage imageNamed:@"task_filter_nav_checked"] forState:UIControlStateNormal];
             weakSelf.keyword = keyword;
             weakSelf.status = status;
             weakSelf.label = label;
             if (keyword == nil && status == nil && label == nil) {
-                [((UIButton *)weakSelf.screenBar.customView) setImage:[UIImage imageNamed:@"task_filter_nav_unchecked"] forState:UIControlStateNormal];
-                
+                weakSelf.screenBar.image = [[UIImage imageNamed:@"task_filter_nav_unchecked"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+            }else{
+                weakSelf.screenBar.image = [[UIImage imageNamed:@"task_filter_nav_checked"] imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
             }
             UIView *curView = [weakSelf getCurContentView];
             if (![curView isKindOfClass:[ProjectTasksView class]]) {
@@ -188,18 +195,14 @@
 
 - (void)refreshToQueryData{
     UIView *curView = [self getCurContentView];
-    if (curView && [curView respondsToSelector:@selector(refreshToQueryData)]) {
-        [curView performSelector:@selector(refreshToQueryData)];
+    if (!curView) {
+        return;
     }
     
-    
-    if ([curView isKindOfClass:[ProjectTasksView class]]) {
-        ProjectTasksView *tasksView = (ProjectTasksView *)curView;
-        [tasksView refreshToQueryData];
-    }else{
-        if (curView && [curView respondsToSelector:@selector(reloadData)]) {
-            [curView performSelector:@selector(reloadData)];
-        }
+    if ([curView respondsToSelector:@selector(refreshToQueryData)]) {
+        [curView performSelector:@selector(refreshToQueryData)];
+    }else if ([curView respondsToSelector:@selector(reloadData)]){
+        [curView performSelector:@selector(reloadData)];
     }
 }
 
@@ -212,14 +215,14 @@
         if (data) {
             weakSelf.myProject = data;
             [weakSelf configNavBtnWithMyProject];
-            [weakSelf refreshWithNewIndex:_curIndex];
+            [weakSelf refreshWithNewIndex:_curType];
         }
     }];
 }
 
 - (void)configNavBtnWithMyProject{
     if (self.curType != ProjectViewTypeTasks) {
-        self.title = _myProject.name;
+        self.title = (self.curType == ProjectViewTypeCodes && _hideBranchTagButton)? _myCodeTree.ref: (self.curType == ProjectViewTypeMembers)? @"成员管理": _myProject.name;
     }
 }
 
@@ -228,22 +231,16 @@
     if ((viewType == ProjectViewTypeMembers && _myProject.current_user_role_id.integerValue >= 90)
         || viewType == ProjectViewTypeTasks
         || viewType == ProjectViewTypeTopics
-        || viewType == ProjectViewTypeFiles) {
+        || viewType == ProjectViewTypeCodes) {
         navRightBtn = [[UIBarButtonItem alloc]
                        initWithImage:[UIImage
-                                      imageNamed:(viewType == ProjectViewTypeCodes ? @"timeBtn_Nav" : @"addBtn_Nav")]
+                                      imageNamed:(viewType == ProjectViewTypeCodes ? @"moreBtn_Nav" : @"addBtn_Nav")]
                        style:UIBarButtonItemStylePlain
                        target:self
                        action:@selector(navRightBtnClicked)];
-    }else if (viewType == ProjectViewTypeCodes){
-        UIButton *button = [[UIButton alloc] initWithFrame:CGRectMake(0, 0, 20, 20)];
-        [button setImage:[UIImage imageNamed:@"timeBtn_Nav"] forState:UIControlStateNormal];
-        [button addTarget:self action:@selector(navRightBtnClicked) forControlEvents:UIControlEventTouchUpInside];
-        navRightBtn = [[UIBarButtonItem alloc] initWithCustomView:button];
-    }
-    
+    }    
     if (ProjectViewTypeTasks == viewType) {
-        UIBarButtonItem *screenBar = [self HDCustomNavButtonWithTitle:nil imageName:@"task_filter_nav_unchecked" target:self action:@selector(screenItemClicked:)];
+        UIBarButtonItem *screenBar = [[UIBarButtonItem alloc] initWithImage:[UIImage imageNamed:@"task_filter_nav_unchecked"] style:UIBarButtonItemStylePlain target:self action:@selector(screenItemClicked:)];
         self.navigationItem.rightBarButtonItems = @[navRightBtn, screenBar];
         _screenBar = screenBar;
     } else {
@@ -252,39 +249,15 @@
 }
 
 - (ProjectViewType)viewTypeFromIndex:(NSInteger)index{
-    ProjectViewType type = 0;
-    if (_myProject.is_public) {
-        if (_myProject.is_public.boolValue) {
-            switch (index) {
-                case 0:
-                    type = ProjectViewTypeActivities;
-                    break;
-                case 1:
-                    type = ProjectViewTypeTopics;
-                    break;
-                case 2:
-                    type = ProjectViewTypeCodes;
-                    break;
-                case 3:
-                    type = ProjectViewTypeMembers;
-                    break;
-                default:
-                    type = ProjectViewTypeActivities;
-                    break;
-            }
-        }else{
-            type = index;
-        }
-    }
-    return type;
+    return index;
 }
 
 - (ProjectViewType)curType{
-    return [self viewTypeFromIndex:_curIndex];
+    return [self viewTypeFromIndex:_curType];
 }
 
 - (void)refreshWithNewIndex:(NSInteger)newIndex{
-    ProjectViewType curViewType = [self viewTypeFromIndex:_curIndex];
+    ProjectViewType curViewType = [self viewTypeFromIndex:_curType];
     ProjectViewType newViewType = [self viewTypeFromIndex:newIndex];
     
 //    配置navBtn
@@ -296,7 +269,7 @@
         curView.hidden = YES;
     }
 //    配置将要显示的视图
-    _curIndex = newIndex;
+    _curType = newIndex;
     curView = [self getCurContentView];
     __weak typeof(self) weakSelf = self;
     if (curView == nil) {
@@ -344,26 +317,22 @@
                 break;
             case ProjectViewTypeFiles:{
                 curView = ({
-                    ProjectFolderListView *folderListView = [[ProjectFolderListView alloc] initWithFrame:self.view.bounds project:_myProject];
+                    NProjectFileListView *folderListView = [[NProjectFileListView alloc] initWithFrame:self.view.bounds project:_myProject folder:nil];
                     folderListView.containerVC = self;
-                    folderListView.folderInProjectBlock = ^(ProjectFolders *rootFolders, ProjectFolder *clickedFolder, Project *inProject){
-                        DebugLog(@"folderInProjectBlock-----: %@- %@", clickedFolder.name, inProject.name);
-                        [weakSelf goToVCWithRootFolder:rootFolders folder:clickedFolder inProject:inProject];
-                    };
                     folderListView;
                 });
             }
                 break;
             case ProjectViewTypeCodes:{
                 curView = ({
-                    ProjectCodeListView *codeListView = [[ProjectCodeListView alloc] initWithFrame:self.view.bounds project:_myProject andCodeTree:[CodeTree codeTreeWithRef:_codeRef andPath:@""]];
+                    ProjectCodeListView *codeListView = [[ProjectCodeListView alloc] initWithFrame:self.view.bounds project:_myProject andCodeTree:_myCodeTree];
                     codeListView.codeTreeFileOfRefBlock = ^(CodeTree_File *curCodeTreeFile, NSString *ref){
                         [weakSelf goToVCWith:curCodeTreeFile andRef:ref];
                     };
-                    codeListView.refChangedBlock = ^(NSString *ref){
-                        weakSelf.codeRef = ref;
+                    codeListView.codeTreeChangedBlock = ^(CodeTree *tree){
+                        weakSelf.myCodeTree = tree;
                     };
-                    [codeListView addBranchTagButton];
+                    codeListView.hideBranchTagButton = self.hideBranchTagButton;
                     codeListView;
                 });
             }
@@ -402,9 +371,15 @@
 
 #pragma mark toVC
 - (void)goToUserInfo:(User *)user{
-    UserInfoViewController *vc = [[UserInfoViewController alloc] init];
-    vc.curUser = user;
-    [self.navigationController pushViewController:vc animated:YES];
+    if (kTarget_Enterprise) {
+        UserInfoDetailViewController *vc = [UserInfoDetailViewController new];
+        vc.curUser = user;
+        [self.navigationController pushViewController:vc animated:YES];
+    }else{
+        UserInfoViewController *vc = [[UserInfoViewController alloc] init];
+        vc.curUser = user;
+        [self.navigationController pushViewController:vc animated:YES];
+    }
 }
 
 - (void)goToActivityListOfUser:(User *)user{
@@ -421,137 +396,117 @@
         CodeListViewController *vc = [[CodeListViewController alloc] init];
         vc.myProject = _myProject;
         vc.myCodeTree = nextCodeTree;
+        vc.hideBranchTagButton = self.hideBranchTagButton;
         [self.navigationController pushViewController:vc animated:YES];
     }else if ([@[@"file", @"image", @"sym_link", @"executable"] containsObject:codeTreeFile.mode]){//文件
         CodeFile *nextCodeFile = [CodeFile codeFileWithRef:ref andPath:codeTreeFile.path];
         CodeViewController *vc = [CodeViewController codeVCWithProject:_myProject andCodeFile:nextCodeFile];
         [self.navigationController pushViewController:vc animated:YES];
+    }else if ([codeTreeFile.mode isEqualToString:@"git_link"]){
+        UIViewController *vc = [BaseViewController analyseVCFromLinkStr:codeTreeFile.info.submoduleLink];
+        if (vc) {
+            [self.navigationController pushViewController:vc animated:YES];
+        }else{
+            [NSObject showHudTipStr:@"有些文件还不支持查看呢_(:з」∠)_"];
+        }
     }else{
         [NSObject showHudTipStr:@"有些文件还不支持查看呢_(:з」∠)_"];
     }
 }
 
-- (void)goToVCWithRootFolder:(ProjectFolders *)rootFolders folder:(ProjectFolder *)folder inProject:(Project *)project{
-    FileListViewController *vc = [[FileListViewController alloc] init];
-    vc.rootFolders = rootFolders;
-    vc.curFolder = folder;
-    vc.curProject = project;
-    [self.navigationController pushViewController:vc animated:YES];
-}
+//- (void)goToVCWithRootFolder:(ProjectFolders *)rootFolders folder:(ProjectFolder *)folder inProject:(Project *)project{
+//    FileListViewController *vc = [[FileListViewController alloc] init];
+//    vc.rootFolders = rootFolders;
+//    vc.curFolder = folder;
+//    vc.curProject = project;
+//    [self.navigationController pushViewController:vc animated:YES];
+//}
 - (void)goToVCWithItem:(HtmlMediaItem *)clickedItem activity:(ProjectActivity *)proAct isContent:(BOOL)isContent inProject:(Project *)project{
     if (isContent) {//cell上面第二个Label
         NSString *target_type = proAct.target_type;
+        NSString *linkPath = nil, *tipStr = nil;
+        
         if ([target_type isEqualToString:@"Task"]) {
-            Task *task = proAct.task;
-            NSArray *pathArray = [task.path componentsSeparatedByString:@"/"];
-            if (pathArray.count >= 7) {
-                EditTaskViewController *vc = [[EditTaskViewController alloc] init];
-                vc.myTask = [Task taskWithBackend_project_path:[NSString stringWithFormat:@"/user/%@/project/%@", pathArray[2], pathArray[4]] andId:pathArray[6]];
-                [self.navigationController pushViewController:vc animated:YES];
-            }else{
-                [NSObject showHudTipStr:@"任务不存在"];
-            }
+            linkPath = proAct.task.path;
+            tipStr = @"任务不存在";
         }else if ([target_type isEqualToString:@"TaskComment"]){
-            Task *task = proAct.task;
             NSArray *pathArray = [proAct.project.full_name componentsSeparatedByString:@"/"];
-            if (pathArray.count >= 2) {
-                EditTaskViewController *vc = [[EditTaskViewController alloc] init];
-                vc.myTask = [Task taskWithBackend_project_path:[NSString stringWithFormat:@"/user/%@/project/%@", pathArray[0], pathArray[1]] andId:task.id.stringValue];
-                [self.navigationController pushViewController:vc animated:YES];
-            }else{
-                [NSObject showHudTipStr:@"任务不存在"];
-            }
-        }else if ([target_type isEqualToString:@"ProjectTopic"]){
-            
-            ProjectTopicActivity *topic = proAct.project_topic;
-            NSArray *pathArray;
-            if ([proAct.action isEqualToString:@"comment"]) {
-                pathArray = [topic.parent.path componentsSeparatedByString:@"/"];
-            }else{
-                pathArray = [topic.path componentsSeparatedByString:@"/"];
-            }
-            if (pathArray.count >= 7) {
-                TopicDetailViewController *vc = [[TopicDetailViewController alloc] init];
-                vc.curTopic = [ProjectTopic topicWithId:[NSNumber numberWithInteger:[pathArray[6] integerValue]]];
-                [self.navigationController pushViewController:vc animated:YES];
-            }else{
-                [NSObject showHudTipStr:@"讨论不存在"];
-            }
+            linkPath = pathArray.count >= 2? [NSString stringWithFormat:@"/u/%@/p/%@/task/%@", pathArray[0], pathArray[1], proAct.task.id]: nil;
         }else if ([target_type isEqualToString:@"ProjectFile"]){
-            File *file = proAct.file;
-            NSArray *pathArray = [file.path componentsSeparatedByString:@"/"];
+//            BOOL isFile = [proAct.type isEqualToString:@"file"];
+//            NSArray *pathArray = [proAct.file.path componentsSeparatedByString:@"/"];
+//            if (!isFile && pathArray.count >= 7){
+//                //文件夹
+//                ProjectFolder *folder;
+//                NSString *folderIdStr = pathArray[6];
+//                if (![folderIdStr isEqualToString:@"default"] && [folderIdStr isPureInt]) {
+//                    NSNumber *folderId = [NSNumber numberWithInteger:folderIdStr.integerValue];
+//                    folder = [ProjectFolder folderWithId:folderId];
+//                    folder.name = proAct.file.name;
+//                }else{
+//                    folder = [ProjectFolder defaultFolder];
+//                }
+//                FileListViewController *vc = [[FileListViewController alloc] init];
+//                vc.curProject = project;
+//                vc.curFolder = folder;
+//                vc.rootFolders = nil;
+//                [self.navigationController pushViewController:vc animated:YES];
+//            }else{
+//                if (isFile) {
+//                    linkPath = proAct.file.path;
+//                }
+//                tipStr = isFile? @"文件不存在" :@"文件夹不存在";
+//            }
             BOOL isFile = [proAct.type isEqualToString:@"file"];
-            
-            if (isFile && pathArray.count >= 9) {
-                //文件
-                NSString *fileIdStr = pathArray[8];
-                ProjectFile *curFile = [ProjectFile fileWithFileId:@(fileIdStr.integerValue) andProjectId:@(project.id.integerValue)];
-                curFile.name = file.name;
-                FileViewController *vc = [FileViewController vcWithFile:curFile andVersion:nil];
-                [self.navigationController pushViewController:vc animated:YES];
-            }else if (!isFile && pathArray.count >= 7){
+            NSArray *pathArray = [proAct.file.path componentsSeparatedByString:@"/"];
+            if (!isFile && pathArray.count >= (kTarget_Enterprise? 5: 7)){
                 //文件夹
-                ProjectFolder *folder;
-                NSString *folderIdStr = pathArray[6];
+                ProjectFile *folder = nil;
+                NSString *folderIdStr = pathArray.lastObject;
                 if (![folderIdStr isEqualToString:@"default"] && [folderIdStr isPureInt]) {
                     NSNumber *folderId = [NSNumber numberWithInteger:folderIdStr.integerValue];
-                    folder = [ProjectFolder folderWithId:folderId];
-                    folder.name = file.name;
-                }else{
-                    folder = [ProjectFolder defaultFolder];
+                    folder = [[ProjectFile alloc] initWithFileId:folderId inProject:project.name ofUser:project.owner_user_name];
+                    folder.name = proAct.file.name;
                 }
-                FileListViewController *vc = [[FileListViewController alloc] init];
+                NFileListViewController *vc = [[NFileListViewController alloc] init];
                 vc.curProject = project;
                 vc.curFolder = folder;
-                vc.rootFolders = nil;
                 [self.navigationController pushViewController:vc animated:YES];
             }else{
-                [NSObject showHudTipStr:(isFile? @"文件不存在" :@"文件夹不存在")];
+                if (isFile) {
+                    linkPath = proAct.file.path;
+                }
+                tipStr = isFile? @"文件不存在" :@"文件夹不存在";
             }
         }else if ([target_type isEqualToString:@"ProjectMember"]) {
             if ([proAct.action isEqualToString:@"quit"]) {
                 //退出项目
-                
             }else{
                 //添加了某成员
-                User *user = proAct.target_user;
-                UserInfoViewController *vc = [[UserInfoViewController alloc] init];
-                vc.curUser = [User userWithGlobalKey:user.global_key];
-                [self.navigationController pushViewController:vc animated:YES];
+                linkPath = [NSString stringWithFormat:@"/u/%@", proAct.target_user.global_key];
             }
-            
-            
         }else if ([target_type isEqualToString:@"Depot"]) {
             if ([proAct.action_msg isEqualToString:@"删除了"]) {
-                [NSObject showHudTipStr:@"删除了，不能看了~"];
+                tipStr = @"删除了，不能看了~";
             }else if ([proAct.action isEqualToString:@"fork"]) {
                 NSArray *nameComponents = [proAct.depot.name componentsSeparatedByString:@"/"];
-                if (nameComponents.count == 2) {
-                    NProjectViewController *vc = [NProjectViewController new];
-                    vc.myProject = [Project new];
-                    vc.myProject.owner_user_name = nameComponents[0];
-                    vc.myProject.name = nameComponents[1];
-                    [self.navigationController pushViewController:vc animated:YES];
-                }else{
-                    [NSObject showHudTipStr:@"没找到 Fork 到哪里去了~"];
-                }
+                linkPath = nameComponents.count == 2? [NSString stringWithFormat:@"/u/%@/p/%@", nameComponents[0], nameComponents[1]]: nil;
+                tipStr = @"没找到 Fork 到哪里去了~";
             }else if ([proAct.action isEqualToString:@"push"]){
                 //    current_user_role_id = 75 是受限成员，不可访问代码
                 if (!project.is_public.boolValue && project.current_user_role_id.integerValue <= 75) {
-                    [NSObject showHudTipStr:@"无权访问项目代码相关功能"];
-                    return;
-                }
-                if (proAct.commits.count == 1) {
-                    Commit *firstCommit = [proAct.commits firstObject];
-                    NSString *request_path = [NSString stringWithFormat:@"%@/commit/%@", proAct.depot.path, firstCommit.sha];
-                    CommitFilesViewController *vc = [CommitFilesViewController vcWithPath:request_path];
-                    [self.navigationController pushViewController:vc animated:YES];
+                    tipStr = @"无权访问项目代码相关功能";
                 }else{
-                    NSString *ref = proAct.ref? proAct.ref : @"master";
-                    ProjectCommitsViewController *vc = [ProjectCommitsViewController new];
-                    vc.curProject = project;
-                    vc.curCommits = [Commits commitsWithRef:ref Path:@""];
-                    [self.navigationController pushViewController:vc animated:YES];
+                    if (proAct.commits.count == 1) {
+                        Commit *firstCommit = [proAct.commits firstObject];
+                        linkPath = [NSString stringWithFormat:@"%@/commit/%@", proAct.depot.path, firstCommit.sha];
+                    }else{
+                        NSString *ref = proAct.ref? proAct.ref : @"master";
+                        ProjectCommitsViewController *vc = [ProjectCommitsViewController new];
+                        vc.curProject = project;
+                        vc.curCommits = [Commits commitsWithRef:ref Path:@""];
+                        [self.navigationController pushViewController:vc animated:YES];
+                    }
                 }
             }else{
                 ProjectViewController *vc = [ProjectViewController codeVCWithCodeRef:proAct.ref andProject:project];
@@ -562,44 +517,61 @@
                   [target_type isEqualToString:@"CommitLineNote"]){
             //    current_user_role_id = 75 是受限成员，不可访问代码
             if (!project.is_public.boolValue && project.current_user_role_id.integerValue <= 75) {
-                [NSObject showHudTipStr:@"无权访问项目代码相关功能"];
-                return;
-            }
-            NSString *request_path;
-            if ([target_type isEqualToString:@"PullRequestBean"]){
-                 request_path = proAct.pull_request_path;
-            }else if ([target_type isEqualToString:@"MergeRequestBean"]){
-                request_path = proAct.merge_request_path;
-            }else if ([target_type isEqualToString:@"CommitLineNote"]){
-                request_path = proAct.line_note.noteable_url;
-            }
-            
-            UIViewController *vc;
-            if ([proAct.line_note.noteable_type isEqualToString:@"Commit"]) {
-                vc = [CommitFilesViewController vcWithPath:request_path];
+                tipStr = @"无权访问项目代码相关功能";
             }else{
-                if([request_path rangeOfString:@"merge"].location == NSNotFound) {
-                    vc = [PRDetailViewController vcWithPath:request_path];
-                } else {
-                    vc = [MRDetailViewController vcWithPath:request_path];
+                if ([target_type isEqualToString:@"PullRequestBean"]){
+                    linkPath = proAct.pull_request_path;
+                }else if ([target_type isEqualToString:@"MergeRequestBean"]){
+                    linkPath = proAct.merge_request_path;
+                }else if ([target_type isEqualToString:@"CommitLineNote"]){
+                    linkPath = proAct.line_note.noteable_url;
                 }
-               
+                tipStr = @"不知道这是个什么东西o(╯□╰)o~";
             }
-            if (vc) {
-                [self.navigationController pushViewController:vc animated:YES];
+        }else if ([target_type isEqualToString:@"ProjectTweet"]) {
+            if ([proAct.action isEqualToString:@"delete"]) {
+                tipStr = @"删除了，不能看了~";
             }else{
-                [NSObject showHudTipStr:@"不知道这是个什么东西o(╯□╰)o~"];
+                linkPath = [NSString stringWithFormat:@"/p/%@/setting/notice", proAct.project.name];
+            }
+        }else if ([target_type isEqualToString:@"Wiki"]) {
+            if ([proAct.action isEqualToString:@"delete"]) {
+                tipStr = @"删除了，不能看了~";
+            }else{
+                linkPath = proAct.wiki_path;
+            }
+        }else if ([target_type isEqualToString:@"BranchMember"]){
+            if ([@[@"add", @"remove"] containsObject:proAct.action]) {
+                linkPath = [NSString stringWithFormat:@"/u/%@", proAct.target_user.global_key];
+            }else{//deny_push/allow_push
+                ProjectViewController *vc = [ProjectViewController codeVCWithCodeRef:proAct.ref_name andProject:project];
+                [self.navigationController pushViewController:vc animated:YES];
+            }
+        }else if ([target_type isEqualToString:@"ProtectedBranch"]){
+            ProjectViewController *vc = [ProjectViewController codeVCWithCodeRef:proAct.ref_name andProject:project];
+            [self.navigationController pushViewController:vc animated:YES];
+        }else if ([target_type isEqualToString:@"Release"]) {
+            if ([proAct.action isEqualToString:@"delete"]) {
+                tipStr = @"版本已删除";
+            }else{
+                linkPath = proAct.release_path;
             }
         }else{
-            if ([target_type isEqualToString:@"Project"]){//这是什么鬼。。遗留的 type 吧
-                [NSObject showHudTipStr:@"还不能查看详细信息呢~"];
-//            }else if ([target_type isEqualToString:@"MergeRequestComment"]){//过期类型，已用CommitLineNote替代
-//            }else if ([target_type isEqualToString:@"PullRequestComment"]){//过期类型，已用CommitLineNote替代
-//            }else if ([target_type isEqualToString:@"ProjectStar"]){//不用解析
-//            }else if ([target_type isEqualToString:@"ProjectWatcher"]){//不用解析
-            }else if ([target_type isEqualToString:@"QcTask"]){//还不能解析
-                [NSObject showHudTipStr:@"还不能查看详细信息呢~"];
+            if ([target_type isEqualToString:@"Project"]){//转让项目之类的
+                //            }else if ([target_type isEqualToString:@"MergeRequestComment"]){//过期类型，已用CommitLineNote替代
+                //            }else if ([target_type isEqualToString:@"PullRequestComment"]){//过期类型，已用CommitLineNote替代
+                //            }else if ([target_type isEqualToString:@"ProjectStar"]){//不用解析
+                //            }else if ([target_type isEqualToString:@"ProjectWatcher"]){//不用解析
+                //            }else if ([target_type isEqualToString:@"QcTask"]){//还不能解析
+            }else{
+                tipStr = @"还不能查看详细信息呢~";
             }
+        }
+        UIViewController *vc = [BaseViewController analyseVCFromLinkStr:linkPath];
+        if (vc) {
+            [self.navigationController pushViewController:vc animated:YES];
+        }else{
+            [NSObject showHudTipStr:tipStr];
         }
     }else{//cell上面第一个Label
         [self goToUserInfo:[User userWithGlobalKey:[clickedItem.href substringFromIndex:3]]];
@@ -610,7 +582,7 @@
 - (void)navRightBtnClicked{
     [_myFliterMenu dismissMenu];
 
-    ProjectViewType curViewType = [self viewTypeFromIndex:_curIndex];
+    ProjectViewType curViewType = [self viewTypeFromIndex:_curType];
     switch (curViewType) {
         case ProjectViewTypeTasks:
         {
@@ -639,7 +611,7 @@
             __weak typeof(self) weakSelf = self;
             AddUserViewController *vc = [[AddUserViewController alloc] init];
             vc.curProject = self.myProject;
-            vc.type = AddUserTypeProjectRoot;
+            vc.type = kTarget_Enterprise? AddUserTypeProjectCompany: AddUserTypeProjectRoot;
             if (_proMemberVC && _proMemberVC.myMemberArray) {
                 [vc configAddedArrayWithMembers:_proMemberVC.myMemberArray];
             }
@@ -651,32 +623,44 @@
             [self.navigationController pushViewController:vc animated:YES];
         }
             break;
-        case ProjectViewTypeFiles:
-        {
-            //新建文件夹
-            __weak typeof(self) weakSelf = self;
-            [SettingTextViewController showSettingFolderNameVCFromVC:self withTitle:@"新建文件夹" textValue:nil type:SettingTypeNewFolderName doneBlock:^(NSString *textValue) {
-                DebugLog(@"%@", textValue);
-                [[Coding_NetAPIManager sharedManager] request_CreatFolder:textValue inFolder:nil inProject:weakSelf.myProject andBlock:^(id data, NSError *error) {
-                    if (data) {
-                        [NSObject showHudTipStr:@"创建文件夹成功"];
-                        ProjectFolderListView *folderListView = (ProjectFolderListView *)[weakSelf getCurContentView];
-                        if (folderListView && [folderListView isKindOfClass:[ProjectFolderListView class]]) {
-                            [folderListView refreshToQueryData];
-                        }
-                    }
-                }];
-            }];
-
-        }
-            break;
+//        case ProjectViewTypeFiles:
+//        {
+//            //新建文件夹
+//            __weak typeof(self) weakSelf = self;
+//            [SettingTextViewController showSettingFolderNameVCFromVC:self withTitle:@"新建文件夹" textValue:nil type:SettingTypeNewFolderName doneBlock:^(NSString *textValue) {
+//                DebugLog(@"%@", textValue);
+//                [[Coding_NetAPIManager sharedManager] request_CreatFolder:textValue inFolder:nil inProject:weakSelf.myProject andBlock:^(id data, NSError *error) {
+//                    if (data) {
+//                        [NSObject showHudTipStr:@"创建文件夹成功"];
+//                        ProjectFolderListView *folderListView = (ProjectFolderListView *)[weakSelf getCurContentView];
+//                        if (folderListView && [folderListView isKindOfClass:[ProjectFolderListView class]]) {
+//                            [folderListView refreshToQueryData];
+//                        }
+//                    }
+//                }];
+//            }];
+//
+//        }
+//            break;
         case ProjectViewTypeCodes:
         {
-            //代码提交记录
-            ProjectCommitsViewController *vc = [ProjectCommitsViewController new];
-            vc.curProject = self.myProject;
-            vc.curCommits = [Commits commitsWithRef:self.codeRef? self.codeRef: @"master" Path:@""];
-            [self.navigationController pushViewController:vc animated:YES];
+            NSMutableArray *actionTitles = @[@"上传图片", @"创建文本文件", @"查看提交记录"].mutableCopy;
+            if (!self.myCodeTree.can_edit) {
+                [actionTitles removeObjectsInRange:NSMakeRange(0, 2)];
+            }
+            __weak typeof(self) weakSelf = self;
+            [[UIAlertController ea_actionSheetCustomWithTitle:nil buttonTitles:actionTitles destructiveTitle:nil cancelTitle:@"取消" andDidDismissBlock:^(UIAlertAction *action, NSInteger index) {
+                if (!weakSelf.myCodeTree.can_edit) {
+                    index += 2;
+                }
+                if (index == 0) {
+                    [(ProjectCodeListView *)[weakSelf getCurContentView] uploadImageClicked];
+                }else if (index == 1){
+                    [(ProjectCodeListView *)[weakSelf getCurContentView] createFileClicked];
+                }else if (index == 2){
+                    [weakSelf goToCommitsVC];
+                }
+            }] showInView:self.view];
         }
             break;
         default:
@@ -684,30 +668,12 @@
     }
 }
 
-- (UIBarButtonItem *)HDCustomNavButtonWithTitle:(NSString *)title imageName:(NSString *)imageName target:(id)targe action:(SEL)action {
-    UIButton *itemButtom = [UIButton buttonWithType:UIButtonTypeCustom];
-    UIImage *image = [UIImage imageNamed:imageName];
-    [itemButtom setImage:image forState:UIControlStateNormal];
-    itemButtom.titleLabel.font = [UIFont systemFontOfSize: 16];
-    [itemButtom setTitle:title forState:UIControlStateNormal];
-    [itemButtom setTitleEdgeInsets:UIEdgeInsetsMake(0, 5, 0, -5)];
-    UIColor *color = [UINavigationBar appearance].titleTextAttributes[NSForegroundColorAttributeName];
-    if (color == nil) {
-        color = [UIColor blackColor];
-    }
-    [itemButtom setTitleColor:color forState:UIControlStateNormal];
-    itemButtom.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
-    [itemButtom addTarget:targe action:action
-         forControlEvents:UIControlEventTouchUpInside];
-    if (title == nil && imageName != nil) {
-        [itemButtom setFrame:CGRectMake(0, 0, image.size.width, image.size.height)];
-    } else {
-        [itemButtom setFrame:CGRectMake(0, 0, 80, 40)];
-    }
-    
-    UIBarButtonItem *barButtonItem = [[UIBarButtonItem alloc]
-                                      initWithCustomView:itemButtom];
-    return barButtonItem;
+- (void)goToCommitsVC{
+    //代码提交记录
+    ProjectCommitsViewController *vc = [ProjectCommitsViewController new];
+    vc.curProject = self.myProject;
+    vc.curCommits = [Commits commitsWithRef:self.myCodeTree.ref Path:@""];
+    [self.navigationController pushViewController:vc animated:YES];
 }
 
 - (void)screenItemClicked:(UIBarButtonItem *)sender {
@@ -770,15 +736,15 @@
             NSInteger watcherProcessing = [data[@"data"][@"watcherProcessing"] integerValue];
             NSInteger creatorDone = [data[@"data"][@"creatorDone"] integerValue];
             NSInteger creatorProcessing = [data[@"data"][@"creatorProcessing"] integerValue];
-             weakSelf.myFliterMenu.items = @[[NSString stringWithFormat:@"所有任务（%ld）", ownerDone + ownerProcessing],
-                                             [NSString stringWithFormat:@"我关注的（%ld）", watcherDone + watcherProcessing],
-                                             [NSString stringWithFormat:@"我创建的（%ld）", creatorDone + creatorProcessing]
-                                             ];
-             if (_role == TaskRoleTypeAll) {
-                 weakSelf.screenView.tastArray = @[[NSString stringWithFormat:@"进行中的（%ld）", ownerProcessing],
-                                                   [NSString stringWithFormat:@"已完成的（%ld）", ownerDone]
-                                                   ];
-             }
+            weakSelf.myFliterMenu.items = @[[NSString stringWithFormat:@"所有任务（%ld）", ownerDone + ownerProcessing],
+                                            [NSString stringWithFormat:@"我关注的（%ld）", watcherDone + watcherProcessing],
+                                            [NSString stringWithFormat:@"我创建的（%ld）", creatorDone + creatorProcessing]
+                                            ];
+            if (_role == TaskRoleTypeAll) {
+                weakSelf.screenView.tastArray = @[[NSString stringWithFormat:@"进行中的（%ld）", ownerProcessing],
+                                                  [NSString stringWithFormat:@"已完成的（%ld）", ownerDone]
+                                                  ];
+            }
             if (_role == TaskRoleTypeWatcher) {
                 weakSelf.screenView.tastArray = @[[NSString stringWithFormat:@"进行中的（%ld）", watcherProcessing],
                                                   [NSString stringWithFormat:@"已完成的（%ld）", watcherDone]
@@ -789,7 +755,7 @@
                                                   [NSString stringWithFormat:@"已完成的（%ld）", creatorDone]
                                                   ];
             }
-         }];
+        }];
 
     } else {
         [[Coding_NetAPIManager sharedManager] request_tasks_searchWithUserId:nil role:TaskRoleTypeAll project_id:_myProject.id.stringValue andBlock:^(id data, NSError *error) {

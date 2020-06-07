@@ -40,6 +40,9 @@
         [tableView mas_makeConstraints:^(MASConstraintMaker *make) {
             make.edges.equalTo(self.view);
         }];
+        tableView.estimatedRowHeight = 0;
+        tableView.estimatedSectionHeaderHeight = 0;
+        tableView.estimatedSectionFooterHeight = 0;
         tableView;
     });
     _myTableView.tableFooterView = [self customFooterView];
@@ -71,7 +74,7 @@
                                                               RACObserve(self, j_captcha),
                                                               RACObserve(self, two_factor_code)]
                                                      reduce:^id(NSString *email, NSString *j_captcha, NSString *two_factor_code){
-                                                         return @(email.length > 0 && j_captcha.length > 0 && two_factor_code.length > 0);
+                                                         return @(email.length > 0 && j_captcha.length > 0 && (two_factor_code.length > 0 || [Login curLoginUser].hasNoEamilAndPhone));
                                                      }];
 
     [footerV addSubview:_footerBtn];
@@ -110,6 +113,13 @@
     return cell;
 }
 
+- (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath{
+    if (indexPath.row == 1 && [Login curLoginUser].hasNoEamilAndPhone) {
+        return 0;
+    }
+    return 50;
+}
+
 - (UIView *)tableView:(UITableView *)tableView viewForHeaderInSection:(NSInteger)section{
     UIView *headerView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, kScreen_Width, 20)];
     headerView.backgroundColor = kColorTableSectionBg;
@@ -133,7 +143,7 @@
     NSString *tipStr;
     if (![_email isEmail]) {
         tipStr = @"邮箱格式有误";
-    }else if (_two_factor_code.length <= 0){
+    }else if (_two_factor_code.length <= 0 && ![Login curLoginUser].hasNoEamilAndPhone){
         tipStr = !_is2FAOpen? @"请填写密码": @"请填写两步验证码";
     }else if (_j_captcha.length <= 0){
         tipStr = @"请填写验证码";

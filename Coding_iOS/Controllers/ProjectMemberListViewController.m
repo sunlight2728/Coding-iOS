@@ -35,13 +35,28 @@
 @implementation ProjectMemberListViewController
 
 - (void)setMyMemberArray:(NSMutableArray *)myMemberArray{
+    [myMemberArray sortUsingComparator:^NSComparisonResult(ProjectMember *obj1, ProjectMember *obj2) {
+        return [[self p_sortWeightOfMember:obj2] compare:[self p_sortWeightOfMember:obj1]];
+    }];
     _myMemberArray = myMemberArray;
-    ProjectMember *mem = [_myMemberArray firstObject];
-    if ([mem.user_id isEqualToNumber:[Login curLoginUser].id]) {
-        _selfRoleType = mem.type;
-    }else{
-        _selfRoleType = @80;//普通成员
+
+    for (ProjectMember *mem in _myMemberArray) {
+        if ([mem.user_id isEqualToNumber:[Login curLoginUser].id]) {
+            _selfRoleType = mem.type;
+            break;
+        }
     }
+}
+
+- (NSNumber *)p_sortWeightOfMember:(ProjectMember *)mem{
+    CGFloat maxMemCount = 9999;
+    NSNumber *weight = nil;
+    BOOL isLoginUser = [mem.user_id isEqualToNumber:[Login curLoginUser].id];
+    BOOL isAddedToWatcher = (_type == ProMemTypeTaskWatchers? [self.curTask hasWatcher:mem.user]:
+                             _type == ProMemTypeTopicWatchers? [self.curTopic hasWatcher:mem.user]:
+                             NO);
+    weight = @(mem.type.integerValue + (isLoginUser? maxMemCount: 0) + (isAddedToWatcher? maxMemCount * 2: 0));
+    return weight;
 }
 
 - (void)willHiden{
@@ -64,13 +79,16 @@
         [tableView mas_makeConstraints:^(MASConstraintMaker *make) {
             make.edges.equalTo(self.view);
         }];
+        tableView.estimatedRowHeight = 0;
+        tableView.estimatedSectionHeaderHeight = 0;
+        tableView.estimatedSectionFooterHeight = 0;
         tableView;
     });
     _mySearchBar = ({
         UISearchBar *searchBar = [[UISearchBar alloc] init];
         searchBar.delegate = self;
         [searchBar sizeToFit];
-        [searchBar setPlaceholder:@"昵称/个性后缀"];
+        [searchBar setPlaceholder:@"昵称/用户名"];
         searchBar;
     });
     _myTableView.tableHeaderView = _mySearchBar;
@@ -99,16 +117,6 @@
 
         if (resultData) {
             NSMutableArray *resultA = [NSObject arrayFromJSON:resultData ofObjects:@"ProjectMember"];
-            __block NSUInteger mineIndex = 0;
-            [resultA enumerateObjectsUsingBlock:^(ProjectMember *obj, NSUInteger idx, BOOL *stop) {
-                if (obj.user_id.integerValue == [Login curLoginUser].id.integerValue) {
-                    mineIndex = idx;
-                    *stop = YES;
-                }
-            }];
-            if (mineIndex > 0) {
-                [resultA exchangeObjectAtIndex:mineIndex withObjectAtIndex:0];
-            }
             weakSelf.myMemberArray = resultA;
             [weakSelf.myTableView reloadData];
         }else{
@@ -214,8 +222,8 @@
         curMember = [_myMemberArray objectAtIndex:indexPath.row];
     }
     __weak typeof(self) weakSelf = self;
-    cell.curMember = curMember;
     cell.type = _type;
+    cell.curMember = curMember;
     if (_type == ProMemTypeProject) {
         [cell setRightUtilityButtons:[self rightButtonsWithObj:curMember] WithButtonWidth:[MemberCell cellHeight]];//编辑按钮
         cell.delegate = self;
@@ -231,7 +239,7 @@
         if (weakSelf.type == ProMemTypeProject) {
             if (curMember.user_id.intValue == [Login curLoginUser].id.intValue) {
                 //                自己，退出项目
-                UIActionSheet *actionSheet = [UIActionSheet bk_actionSheetCustomWithTitle:@"确定退出项目？" buttonTitles:nil destructiveTitle:@"确认退出" cancelTitle:@"取消" andDidDismissBlock:^(UIActionSheet *sheet, NSInteger index) {
+                UIAlertController *actionSheet = [UIAlertController ea_actionSheetCustomWithTitle:@"确定退出项目？" buttonTitles:nil destructiveTitle:@"确认退出" cancelTitle:@"取消" andDidDismissBlock:^(UIAlertAction *action, NSInteger index) {
                     if (index == 0) {
                         [weakSelf quitSelf_ProjectMember:curMember];
                     }
@@ -353,7 +361,7 @@
     }else if (index == 1){//修改权限
         [self editTypeOfMember:mem];
     }else if (index == 2){//移除成员
-        [[UIActionSheet bk_actionSheetCustomWithTitle:@"移除该成员后，他将不再显示在项目中" buttonTitles:nil destructiveTitle:@"确认移除" cancelTitle:@"取消" andDidDismissBlock:^(UIActionSheet *sheet, NSInteger index) {
+        [[UIAlertController ea_actionSheetCustomWithTitle:@"移除该成员后，他将不再显示在项目中" buttonTitles:nil destructiveTitle:@"确认移除" cancelTitle:@"取消" andDidDismissBlock:^(UIAlertAction *action, NSInteger index) {
             if (index == 0) {
                 [self removeMember:mem];
             }

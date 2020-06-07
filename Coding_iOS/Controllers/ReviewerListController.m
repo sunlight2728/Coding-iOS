@@ -43,13 +43,7 @@ static NSString *const kValueKey = @"kValueKey";
 
 -(void)viewWillAppear:(BOOL)animated {
     if(self.isPublisher) {
-        UIImage* backImage = [UIImage imageNamed:@"addBtn_Nav"];
-        CGRect backframe = CGRectMake(0,0,19,19);
-        UIButton* addReviewerButton= [[UIButton alloc] initWithFrame:backframe];
-        [addReviewerButton setBackgroundImage:backImage forState:UIControlStateNormal];
-        [addReviewerButton addTarget:self action:@selector(selectRightAction:) forControlEvents:UIControlEventTouchUpInside];
-        UIBarButtonItem* leftBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:addReviewerButton];
-        self.navigationItem.rightBarButtonItem = leftBarButtonItem;
+        self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithImage:[UIImage imageNamed:@"addBtn_Nav"] style:UIBarButtonItemStylePlain target:self action:@selector(selectRightAction:)];
     }
     self.delReviewerPath = [NSString stringWithFormat:@"/api/user/%@/project/%@/git/merge/%@/del_reviewer",_curMRPR.des_owner_name, _curMRPR.des_project_name,self.curMRPR.iid];
     [self updateData];
@@ -97,18 +91,6 @@ static NSString *const kValueKey = @"kValueKey";
 }
 
 #pragma mark Table M
-- (CGFloat)tableView:(UITableView *)tableView heightForHeaderInSection:(NSInteger)section {
-    return 20;
-}
-
-- (UIView *)tableView:(UITableView *)tableView viewForHeaderInSection:(NSInteger)section {
-    return nil;
-}
-
-- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {
-    return 1;
-}
-
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
     return [self.reviewers count];
 }
@@ -121,7 +103,7 @@ static NSString *const kValueKey = @"kValueKey";
     } else {
         [cell initCellWithVolunteerReviewers:cellReviewer.reviewer likeValue:cellReviewer.value];
     }
-    [tableView addLineforPlainCell:cell forRowAtIndexPath:indexPath withLeftSpace:60];
+    [tableView addLineforPlainCell:cell forRowAtIndexPath:indexPath withLeftSpace:70];
     return cell;
 }
 
@@ -130,10 +112,17 @@ static NSString *const kValueKey = @"kValueKey";
 }
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
+    //用 cell 去拿数据，特么很迷啊。。
     ReviewCell *currentCell = [tableView cellForRowAtIndexPath:indexPath];
-    UserInfoViewController *vc = [[UserInfoViewController alloc] init];
-    vc.curUser = currentCell.user;
-    [self.navigationController pushViewController:vc animated:YES];
+    if (kTarget_Enterprise) {
+        UserInfoDetailViewController *vc = [UserInfoDetailViewController new];
+        vc.curUser = currentCell.user;
+        [self.navigationController pushViewController:vc animated:YES];
+    }else{
+        UserInfoViewController *vc = [[UserInfoViewController alloc] init];
+        vc.curUser = currentCell.user;
+        [self.navigationController pushViewController:vc animated:YES];
+    }
 }
 
 #pragma mark SWTableViewCellDelegate

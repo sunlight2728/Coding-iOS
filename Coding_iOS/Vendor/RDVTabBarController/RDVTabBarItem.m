@@ -73,17 +73,17 @@
                                    };
     _selectedTitleAttributes = @{
                                  NSFontAttributeName: [UIFont systemFontOfSize:10],
-                                 NSForegroundColorAttributeName: kColorBrandGreen,
+                                 NSForegroundColorAttributeName: kColorBrandBlue,
                                  };
     
-    _badgeBackgroundColor = [UIColor colorWithHexString:@"0xf75388"];
+    _badgeBackgroundColor = [UIColor colorWithHexString:@"0xFF0000"];
     _badgeTextColor = [UIColor whiteColor];
     if (kDevice_Is_iPhone6 || kDevice_Is_iPhone6Plus) {
         _badgeTextFont = [UIFont systemFontOfSize:12];
     }else{
         _badgeTextFont = [UIFont systemFontOfSize:11];
     }
-    _badgePositionAdjustment = UIOffsetMake(-4, 2);
+    _badgePositionAdjustment = UIOffsetMake(-6, 2);
 //    _badgePositionAdjustment = UIOffsetMake(右移量, 下移量);
 }
 

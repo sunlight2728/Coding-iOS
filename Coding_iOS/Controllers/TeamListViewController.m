@@ -35,6 +35,9 @@
         [tableView mas_makeConstraints:^(MASConstraintMaker *make) {
             make.edges.equalTo(self.view);
         }];
+        tableView.estimatedRowHeight = 0;
+        tableView.estimatedSectionHeaderHeight = 0;
+        tableView.estimatedSectionFooterHeight = 0;
         tableView;
     });
     _myRefreshControl = [[ODRefreshControl alloc] initInScrollView:self.myTableView];
@@ -54,7 +57,7 @@
             weakSelf.teamList = data;
             [weakSelf.myTableView reloadData];
         }
-        [weakSelf.myTableView configBlankPage:EaseBlankPageTypeView hasData:(weakSelf.teamList.count > 0) hasError:(error != nil) reloadButtonBlock:^(id sender) {
+        [weakSelf.myTableView configBlankPage:EaseBlankPageTypeTeam hasData:(weakSelf.teamList.count > 0) hasError:(error != nil) reloadButtonBlock:^(id sender) {
             [weakSelf refresh];
         }];
     }];

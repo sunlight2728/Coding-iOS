@@ -11,6 +11,7 @@
 #import "WebContentManager.h"
 #import "EaseMarkdownTextView.h"
 #import "WebViewController.h"
+#import "UIViewController+BackButtonHandler.h"
 
 
 @interface ProjectTweetSendViewController ()<UIWebViewDelegate>
@@ -72,6 +73,21 @@
     }
 }
 
+- (BOOL)navigationShouldPopOnBackButton{
+    BOOL hasChanged = ![self.curTweet.raw ?: @"" isEqualToString:_editView.text];
+    if (hasChanged) {
+        __weak typeof(self) weakSelf = self;
+        [[UIAlertController ea_alertViewWithTitle:@"提示" message:@"如果不保存，更改将丢失，是否确认返回？" buttonTitles:@[@"确认返回"] destructiveTitle:nil cancelTitle:@"取消" andDidDismissBlock:^(UIAlertAction *action, NSInteger index) {
+            if (index == 0) {
+                [weakSelf.navigationController popViewControllerAnimated:YES];
+            }
+        }] show];
+        return NO;
+    }else{
+        return YES;
+    }
+}
+
 #pragma mark UISegmentedControl
 - (void)segmentedControlSelected:(id)sender{
     UISegmentedControl *segmentedControl = (UISegmentedControl *)sender;
@@ -107,9 +123,9 @@
         _editView.textColor = kColor666;
         _editView.font = [UIFont systemFontOfSize:16];
         _editView.textContainerInset = UIEdgeInsetsMake(15, kPaddingLeftWidth - 5, 8, kPaddingLeftWidth - 5);
-        _editView.placeholder = @"任务描述";
+        _editView.placeholder = @"公告内容";
         
-        _editView.text = nil;
+        _editView.text = _curTweet.raw;
         [self.view addSubview:_editView];
         [_editView mas_makeConstraints:^(MASConstraintMaker *make) {
             make.edges.equalTo(self.view);
@@ -170,19 +186,35 @@
 #pragma mark nav_btn
 
 - (void)sendBtnClicked{
-    [NSObject showHUDQueryStr:@"正在发布..."];
-    @weakify(self);
-    [[Coding_NetAPIManager sharedManager] request_Tweet_DoProjectTweet_WithPro:self.curPro.id content:self.editView.text andBlock:^(id data, NSError *error) {
-        [NSObject hideHUDQuery];
-        if (data) {
-            [NSObject showHudTipStr:@"发布成功"];
-            @strongify(self);
-            if (self.sentBlock) {
-                self.sentBlock(data);
+    if (_curTweet && _curTweet.isProjectTweet) {
+        [NSObject showHUDQueryStr:@"正在修改..."];
+        @weakify(self);
+        [[Coding_NetAPIManager sharedManager] request_Tweet_EditProjectTweet:self.curTweet content:self.editView.text andBlock:^(id data, NSError *error) {
+            [NSObject hideHUDQuery];
+            if (data) {
+                [NSObject showHudTipStr:@"修改成功"];
+                @strongify(self);
+                if (self.sentBlock) {
+                    self.sentBlock(data);
+                }
+                [self.navigationController popViewControllerAnimated:YES];
             }
-            [self.navigationController popViewControllerAnimated:YES];
-        }
-    }];
+        }];
+    }else{
+        [NSObject showHUDQueryStr:@"正在发布..."];
+        @weakify(self);
+        [[Coding_NetAPIManager sharedManager] request_Tweet_DoProjectTweet_WithPro:self.curPro.id content:self.editView.text andBlock:^(id data, NSError *error) {
+            [NSObject hideHUDQuery];
+            if (data) {
+                [NSObject showHudTipStr:@"发布成功"];
+                @strongify(self);
+                if (self.sentBlock) {
+                    self.sentBlock(data);
+                }
+                [self.navigationController popViewControllerAnimated:YES];
+            }
+        }];
+    }
 }
 
 #pragma mark UIWebViewDelegate

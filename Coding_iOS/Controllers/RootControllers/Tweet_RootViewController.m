@@ -59,6 +59,10 @@
     return vc;
 }
 
+- (Tweet_RootViewControllerType)type{
+    return _curIndex;
+}
+
 - (instancetype)init
 {
     self = [super init];
@@ -99,9 +103,9 @@
 //                              [self refreshFirst];
 //                          }];
     
-    UIBarButtonItem *leftBarItem = [[UIBarButtonItem alloc] initWithImage:[UIImage imageNamed:@"hot_topic_Nav"] style:UIBarButtonItemStylePlain target:self action:@selector(hotTopicBtnClicked:)];
-
-    [self.parentViewController.navigationItem setLeftBarButtonItem:leftBarItem animated:NO];
+//    UIBarButtonItem *leftBarItem = [[UIBarButtonItem alloc] initWithImage:[UIImage imageNamed:@"hot_topic_Nav"] style:UIBarButtonItemStylePlain target:self action:@selector(hotTopicBtnClicked:)];
+//
+//    [self.parentViewController.navigationItem setLeftBarButtonItem:leftBarItem animated:NO];
     
     _tweetsDict = [[NSMutableDictionary alloc] initWithCapacity:4];
 
@@ -128,6 +132,9 @@
             UIEdgeInsets insets = UIEdgeInsetsMake(0, 0, CGRectGetHeight(self.rdv_tabBarController.tabBar.frame), 0);
             tableView.contentInset = insets;
         }
+        tableView.estimatedRowHeight = 0;
+        tableView.estimatedSectionHeaderHeight = 0;
+        tableView.estimatedSectionFooterHeight = 0;
         tableView;
     });
     _refreshControl = [[ODRefreshControl alloc] initInScrollView:self.myTableView];
@@ -198,7 +205,7 @@
 - (void)messageInputView:(UIMessageInputView *)inputView heightToBottomChenged:(CGFloat)heightToBottom{
     [UIView animateWithDuration:0.25 delay:0.0f options:UIViewAnimationOptionTransitionFlipFromBottom animations:^{
         UIEdgeInsets contentInsets= UIEdgeInsetsMake(0.0, 0.0, heightToBottom, 0.0);;
-        CGFloat msgInputY = kScreen_Height - heightToBottom - 64;
+        CGFloat msgInputY = kScreen_Height - heightToBottom - (44 + kSafeArea_Top);
         
         self.myTableView.contentInset = contentInsets;
         
@@ -224,7 +231,6 @@
     __weak typeof(self) weakSelf = self;
     TweetSendViewController *vc = [[TweetSendViewController alloc] init];
     vc.sendNextTweet = ^(Tweet *nextTweet){
-        [nextTweet saveSendData];//发送前保存草稿
         [[Coding_NetAPIManager sharedManager] request_Tweet_DoTweet_WithObj:nextTweet andBlock:^(id data, NSError *error) {
             if (data) {
                 [Tweet deleteSendData];//发送成功后删除草稿
@@ -239,11 +245,16 @@
                     }
                     [self.myTableView reloadData];
                 }
-                [weakSelf.view configBlankPage:EaseBlankPageTypeTweet hasData:(curTweets.list.count > 0) hasError:(error != nil) reloadButtonBlock:^(id sender) {
+                [weakSelf.view configBlankPage:EaseBlankPageTypeTweetAction hasData:(curTweets.list.count > 0) hasError:(error != nil) reloadButtonBlock:^(id sender) {
                     [weakSelf sendRequest];
                 }];
+                //空白页按钮事件
+                weakSelf.view.blankPageView.clickButtonBlock=^(EaseBlankPageType curType) {
+                    [weakSelf sendTweet];
+                };
+            }else{
+                [nextTweet saveSendData];//发送失败，保存草稿
             }
-
         }];
 
     };
@@ -260,9 +271,13 @@
             if (outTweetsIndex == weakSelf.curIndex) {
                 [weakSelf.myTableView reloadData];
             }
-            [weakSelf.view configBlankPage:EaseBlankPageTypeTweet hasData:(curTweets.list.count > 0) hasError:(error != nil) reloadButtonBlock:^(id sender) {
+            [weakSelf.view configBlankPage:EaseBlankPageTypeTweetAction hasData:(curTweets.list.count > 0) hasError:(error != nil) reloadButtonBlock:^(id sender) {
                 [weakSelf sendRequest];
             }];
+            //空白页按钮事件
+            weakSelf.view.blankPageView.clickButtonBlock=^(EaseBlankPageType curType) {
+                [weakSelf sendTweet];
+            };
         }
     }];
 }
@@ -305,9 +320,14 @@
         [self refresh];
     }
     if (!curTweets.isLoading) {
-        [self.view configBlankPage:EaseBlankPageTypeTweet hasData:(curTweets.list.count > 0) hasError:NO reloadButtonBlock:^(id sender) {
-            [self sendRequest];
+        __weak typeof(self) weakSelf = self;
+        [self.view configBlankPage:EaseBlankPageTypeTweetAction hasData:(curTweets.list.count > 0) hasError:NO reloadButtonBlock:^(id sender) {
+            [weakSelf sendRequest];
         }];
+        //空白页按钮事件
+        self.view.blankPageView.clickButtonBlock=^(EaseBlankPageType curType) {
+            [weakSelf sendTweet];
+        };
     }
 }
 
@@ -345,9 +365,13 @@
             [weakSelf.myTableView reloadData];
             weakSelf.myTableView.showsInfiniteScrolling = curTweets.canLoadMore;
         }
-        [weakSelf.view configBlankPage:EaseBlankPageTypeTweet hasData:(curTweets.list.count > 0) hasError:(error != nil) reloadButtonBlock:^(id sender) {
+        [weakSelf.view configBlankPage:EaseBlankPageTypeTweetAction hasData:(curTweets.list.count > 0) hasError:(error != nil) reloadButtonBlock:^(id sender) {
             [weakSelf sendRequest];
         }];
+        //空白页按钮事件
+        weakSelf.view.blankPageView.clickButtonBlock=^(EaseBlankPageType curType) {
+            [weakSelf sendTweet];
+        };
     }];
 }
 
@@ -384,7 +408,7 @@
 
             if ([Login isLoginUserGlobalKey:weakSelf.commentToUser.global_key]) {
                 ESWeakSelf
-                UIActionSheet *actionSheet = [UIActionSheet bk_actionSheetCustomWithTitle:@"删除此评论" buttonTitles:nil destructiveTitle:@"确认删除" cancelTitle:@"取消" andDidDismissBlock:^(UIActionSheet *sheet, NSInteger index) {
+                UIAlertController *actionSheet = [UIAlertController ea_actionSheetCustomWithTitle:@"删除此评论" buttonTitles:nil destructiveTitle:@"确认删除" cancelTitle:@"取消" andDidDismissBlock:^(UIAlertAction *action, NSInteger index) {
                     ESStrongSelf
                     if (index == 0 && _self.commentIndex >= 0) {
                         Comment *comment  = [_self.commentTweet.comment_list objectAtIndex:_self.commentIndex];
@@ -421,7 +445,7 @@
         
         
         ESWeakSelf
-        UIActionSheet *actionSheet = [UIActionSheet bk_actionSheetCustomWithTitle:@"删除此冒泡" buttonTitles:nil destructiveTitle:@"确认删除" cancelTitle:@"取消" andDidDismissBlock:^(UIActionSheet *sheet, NSInteger index) {
+        UIAlertController *actionSheet = [UIAlertController ea_actionSheetCustomWithTitle:@"删除此冒泡" buttonTitles:nil destructiveTitle:@"确认删除" cancelTitle:@"取消" andDidDismissBlock:^(UIAlertAction *action, NSInteger index) {
             ESStrongSelf
             if (index == 0) {
                 [_self deleteTweet:_self.deleteTweet outTweetsIndex:_self.deleteTweetsIndex];
@@ -462,9 +486,13 @@
         Tweets *curTweets = [weakSelf.tweetsDict objectForKey:[NSNumber numberWithInteger:weakSelf.curIndex]];
         [curTweets.list removeObject:toDeleteTweet];
         [weakSelf.myTableView reloadData];
-        [weakSelf.view configBlankPage:EaseBlankPageTypeTweet hasData:(curTweets.list.count > 0) hasError:NO reloadButtonBlock:^(id sender) {
+        [weakSelf.view configBlankPage:EaseBlankPageTypeTweetAction hasData:(curTweets.list.count > 0) hasError:NO reloadButtonBlock:^(id sender) {
             [weakSelf sendRequest];
         }];
+        //空白页按钮事件
+        weakSelf.view.blankPageView.clickButtonBlock=^(EaseBlankPageType curType) {
+            [weakSelf sendTweet];
+        };
     };
     [self.navigationController pushViewController:vc animated:YES];
 }

@@ -10,14 +10,17 @@
 #define kHUDQueryViewTag 101
 
 #define kBaseURLStr @"https://coding.net/"
+#define kBaseCompanySuffixStr @"coding.net"
+#define kBaseCompanyKey @"k_base_company"
+
+#define kIsPrivateCloudKey @"k_is_private_cloud"
+#define kPrivateCloudKey @"k_private_cloud"
 
 #import "NSObject+Common.h"
 #import "JDStatusBarNotification.h"
 #import "Login.h"
 #import "AppDelegate.h"
-#import "MBProgressHUD+Add.h"
 #import "CodingNetAPIClient.h"
-#import <SDCAlertView/SDCAlertController.h>
 #import "Coding_NetAPIManager.h"
 
 @implementation NSObject (Common)
@@ -40,10 +43,16 @@
                 }
             }
         }else{
-            if ([error.userInfo objectForKey:@"NSLocalizedDescription"]) {
-                tipStr = [error.userInfo objectForKey:@"NSLocalizedDescription"];
+            if (error.userInfo[NSUnderlyingErrorKey]) {
+                tipStr = [self tipFromError:error.userInfo[NSUnderlyingErrorKey]].mutableCopy;
+            }else if (error.userInfo[NSLocalizedDescriptionKey]) {
+                tipStr = error.userInfo[NSLocalizedDescriptionKey];
             }else{
-                [tipStr appendFormat:@"ErrorCode%ld", (long)error.code];
+                if (error.code == 3840) {//Json 解析失败
+                    [tipStr appendFormat:@"服务器返回数据格式有误"];
+                }else{
+                    [tipStr appendFormat:@"错误代码 %ld", (long)error.code];
+                }
             }
         }
         return tipStr;
@@ -70,7 +79,7 @@
         [hud hide:YES afterDelay:1.0];
     }
 }
-+ (instancetype)showHUDQueryStr:(NSString *)titleStr{
++ (MBProgressHUD *)showHUDQueryStr:(NSString *)titleStr{
     titleStr = titleStr.length > 0? titleStr: @"正在获取数据...";
     MBProgressHUD *hud = [MBProgressHUD showHUDAddedTo:kKeyWindow animated:YES];
     hud.tag = kHUDQueryViewTag;
@@ -124,17 +133,35 @@
 
 #pragma mark BaseURL
 + (NSString *)baseURLStr{
-    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-    return [defaults valueForKey:kBaseURLStr] ?: kBaseURLStr;
+    if (kTarget_Enterprise) {
+        if ([self isPrivateCloud].boolValue) {
+            return [self privateCloud];
+        }else{
+            if (![self baseCompany]) {
+                return nil;
+            }
+            NSString *baseURLStr = [NSString stringWithFormat:@"%@://%@.%@/", ([self baseURLStrIsProduction]? @"https": @"http"), [self baseCompany], [self baseCompanySuffixStr]];
+            return baseURLStr;
+        }
+    }else{
+        NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+        return [defaults valueForKey:kBaseURLStr] ?: kBaseURLStr;
+    }
 }
 
 + (BOOL)baseURLStrIsProduction{
-    return [[self baseURLStr] isEqualToString:kBaseURLStr];
+    if (kTarget_Enterprise) {
+        return [[self baseCompanySuffixStr] isEqualToString:kBaseCompanySuffixStr];
+    }else{
+        return [[self baseURLStr] isEqualToString:kBaseURLStr];
+    }
 }
 
 + (void)changeBaseURLStrTo:(NSString *)baseURLStr{
     if (baseURLStr.length <= 0) {
         baseURLStr = kBaseURLStr;
+    }else if (![baseURLStr hasSuffix:@"/"]){
+        baseURLStr = [baseURLStr stringByAppendingString:@"/"];
     }
 
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
@@ -143,7 +170,86 @@
     
     [CodingNetAPIClient changeJsonClient];
     
-    [[UINavigationBar appearance] setBackgroundImage:[UIImage imageWithColor:[self baseURLStrIsProduction]? kColorNavBG: kColorBrandGreen] forBarMetrics:UIBarMetricsDefault];
+    [[UINavigationBar appearance] setBackgroundImage:[UIImage imageWithColor:[self baseURLStrIsProduction]? kColorNavBG: kColorActionYellow] forBarMetrics:UIBarMetricsDefault];
+}
+
++ (NSString *)e_URLStr{
+    NSString *baseURLStr = [NSString stringWithFormat:@"%@://e.%@/", ([self baseURLStrIsProduction]? @"https": @"http"), [self baseCompanySuffixStr]];
+    return [self isPrivateCloud].boolValue? [self privateCloud]: baseURLStr;
+}
+
++ (NSString *)baseCompanySuffixStr{
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    NSString *baseCompanySuffixStr = [defaults valueForKey:kBaseCompanySuffixStr] ?: kBaseCompanySuffixStr;
+    return [baseCompanySuffixStr lowercaseString];
+}
++ (void)changeBaseCompanySuffixStrTo:(NSString *)companySuffixStr{
+    if (companySuffixStr.length <= 0) {
+        companySuffixStr = kBaseCompanySuffixStr;
+    }
+    if (![companySuffixStr isEqualToString:[self baseCompanySuffixStr]]) {
+        NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+        [defaults setObject:companySuffixStr forKey:kBaseCompanySuffixStr];
+        [defaults synchronize];
+        
+        [[UINavigationBar appearance] setBackgroundImage:[UIImage imageWithColor:[self baseURLStrIsProduction]? kColorNavBG: kColorBrandBlue] forBarMetrics:UIBarMetricsDefault];
+        
+        if ([self baseCompany]) {
+            [CodingNetAPIClient changeSharedJsonClient];
+        }
+        [CodingNetAPIClient changeE_JsonClient];
+    }
+}
+
++ (NSString *)baseCompany{
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    NSString *baseCompany = [defaults valueForKey:kBaseCompanyKey];
+    return [self isPrivateCloud].boolValue? @"ce": baseCompany;
+}
++ (void)changeBaseCompanyTo:(NSString *)company{
+    if ([self isPrivateCloud].boolValue) {
+        [self changePrivateCloudTo:company];
+    }else if (![company isEqualToString:[self baseCompany]]) {
+        NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+        [defaults setObject:company ?: @"" forKey:kBaseCompanyKey];
+        [defaults synchronize];
+        
+        [CodingNetAPIClient changeSharedJsonClient];
+    }
+}
+
++ (NSNumber *)isPrivateCloud{
+    //    return @(YES);
+    return [[NSUserDefaults standardUserDefaults] valueForKey:kIsPrivateCloudKey];
+}
++ (void)setupIsPrivateCloud:(NSNumber *)isPrivateCloud{
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    if (isPrivateCloud) {
+        [defaults setObject:isPrivateCloud forKey:kIsPrivateCloudKey];
+    }else{
+        [defaults removeObjectForKey:kIsPrivateCloudKey];
+    }
+    [defaults synchronize];
+    [CodingNetAPIClient changeSharedJsonClient];
+}
++ (NSString *)privateCloud{
+    //    return @"http://pd.codingprod.net/";
+    return [[NSUserDefaults standardUserDefaults] valueForKey:kPrivateCloudKey];
+}
++ (void)changePrivateCloudTo:(NSString *)privateCloud{
+    if (privateCloud.length > 0) {
+        if (![privateCloud hasPrefix:@"http"]) {
+            privateCloud = [NSString stringWithFormat:@"http://%@", privateCloud];
+        }
+        if (![privateCloud hasSuffix:@"/"]) {
+            privateCloud = [privateCloud stringByAppendingString:@"/"];
+        }
+    }
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    [defaults setObject:privateCloud ?: @"" forKey:kPrivateCloudKey];
+    [defaults synchronize];
+    
+    [CodingNetAPIClient changeSharedJsonClient];
 }
 
 #pragma mark File M
@@ -345,8 +451,11 @@
     return error;
 }
 
-
 + (void)showCaptchaViewParams:(NSMutableDictionary *)params{
+    [self showCaptchaViewParams:params success:nil];
+}
+
++ (void)showCaptchaViewParams:(NSMutableDictionary *)params success:(void (^)())block{
     //Data
     if (!params) {
         params = @{}.mutableCopy;
@@ -357,12 +466,12 @@
     NSString *path = @"api/request_valid";
     NSURL *imageURL = [NSURL URLWithString:[NSString stringWithFormat:@"%@api/getCaptcha?type=%@", [NSObject baseURLStr], params[@"type"]]];
     //UI
-    SDCAlertController *alertV = [SDCAlertController alertControllerWithTitle:@"提示" message:@"亲，您操作这么快，不会是机器人吧？\n来，输个验证码先？" preferredStyle:SDCAlertControllerStyleAlert];
+    SDCAlertController *alertV = [SDCAlertController alertControllerWithTitle:@"提示" message:@"请输入图片验证码" preferredStyle:SDCAlertControllerStyleAlert];
     UITextField *textF = [UITextField new];
     textF.layer.sublayerTransform = CATransform3DMakeTranslation(5, 0, 0);
     textF.backgroundColor = [UIColor whiteColor];
     [textF doBorderWidth:0.5 color:nil cornerRadius:2.0];
-    UIImageView *imageV = [UIImageView new];
+    UIImageView *imageV = [YLImageView new];
     imageV.backgroundColor = [UIColor lightGrayColor];
     imageV.contentMode = UIViewContentModeScaleAspectFit;
     imageV.clipsToBounds = YES;
@@ -391,7 +500,7 @@
     }];
     __weak typeof(alertV) weakAlertV = alertV;
     [alertV addAction:[SDCAlertAction actionWithTitle:@"取消" style:SDCAlertActionStyleCancel handler:nil]];
-    [alertV addAction:[SDCAlertAction actionWithTitle:@"还真不是" style:SDCAlertActionStyleDefault handler:nil]];
+    [alertV addAction:[SDCAlertAction actionWithTitle:@"确定" style:SDCAlertActionStyleDefault handler:nil]];
     alertV.shouldDismissBlock =  ^BOOL (SDCAlertAction *action){
         BOOL shouldDismiss = [action.title isEqualToString:@"取消"];
         if (!shouldDismiss) {
@@ -399,7 +508,11 @@
             [[CodingNetAPIClient sharedJsonClient] requestJsonDataWithPath:path withParams:params withMethodType:Post andBlock:^(id data, NSError *error) {
                 if (data) {
                     [weakAlertV dismissWithCompletion:^{
-                        [NSObject showHudTipStr:@"验证码正确"];
+                        if (block) {
+                            block();
+                        }else{
+                            [NSObject showHudTipStr:@"验证码正确"];
+                        }
                     }];
                 }else{
                     [weakImageV sd_setImageWithURL:imageURL placeholderImage:nil options:(SDWebImageRetryFailed | SDWebImageRefreshCached | SDWebImageHandleCookies)];
@@ -411,6 +524,27 @@
     [alertV presentWithCompletion:^{
         [textF becomeFirstResponder];
     }];
+}
+
+
+#pragma Other
++ (void)logCookies{
+    NSArray *cookies = [[NSHTTPCookieStorage sharedHTTPCookieStorage] cookies];
+    [cookies enumerateObjectsUsingBlock:^(NSHTTPCookie *  _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+        NSLog(@"cookie: %@", obj.description);
+    }];
+}
+
++ (void)preCookieHandle{
+    NSHTTPCookieStorage *storage = [NSHTTPCookieStorage sharedHTTPCookieStorage];
+    NSHTTPCookie *cookie = [NSHTTPCookie cookieWithProperties:@{NSHTTPCookieName: @"e_dev",
+                                                                NSHTTPCookieValue: @"1",
+                                                                NSHTTPCookieDomain: @".coding.net",
+                                                                NSHTTPCookieOriginURL: @".coding.net",
+                                                                NSHTTPCookiePath: @"/"}];
+    [storage setCookie:cookie];
+    
+    //    [self logCookies];
 }
 
 @end

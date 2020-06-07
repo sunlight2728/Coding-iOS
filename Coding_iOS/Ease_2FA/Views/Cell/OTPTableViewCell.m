@@ -61,7 +61,7 @@
     if (!_passwordLabel) {
         _passwordLabel = [UILabel new];
         _passwordLabel.font = [UIFont systemFontOfSize:50];
-        _passwordLabel.textColor = kColorBrandGreen;
+        _passwordLabel.textColor = kColorBrandBlue;
         [self.contentView addSubview:_passwordLabel];
         [_passwordLabel mas_makeConstraints:^(MASConstraintMaker *make) {
             make.centerY.equalTo(self.contentView);
@@ -131,7 +131,8 @@
     if (!_back_passwordLabel) {
         _back_passwordLabel = [UILabel new];
         _back_passwordLabel.font = [UIFont systemFontOfSize:50];
-        _back_passwordLabel.textColor = [UIColor colorWithHexString:@"0xE15957"];
+//        _back_passwordLabel.textColor = [UIColor colorWithHexString:@"0xE15957"];
+        _back_passwordLabel.textColor = kColorDark3;
         [self.contentView addSubview:_back_passwordLabel];
         [_back_passwordLabel mas_makeConstraints:^(MASConstraintMaker *make) {
             make.edges.equalTo(self.passwordLabel);
@@ -153,6 +154,7 @@
 }
 
 - (void)prepareForReuse{
+    [super prepareForReuse];
     [self.contentView.layer removeAllAnimations];
     for (UIView *view in [self subviews]) {
         if ([view isKindOfClass:NSClassFromString(@"UITableViewCellDeleteConfirmationView")]) {

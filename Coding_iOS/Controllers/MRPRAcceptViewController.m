@@ -69,6 +69,9 @@ _curMRPR.author.name,
         [tableView mas_makeConstraints:^(MASConstraintMaker *make) {
             make.edges.equalTo(self.view);
         }];
+        tableView.estimatedRowHeight = 0;
+        tableView.estimatedSectionHeaderHeight = 0;
+        tableView.estimatedSectionFooterHeight = 0;
         tableView;
     });
     _myTableView.tableFooterView = [self tableFooterView];
@@ -138,9 +141,23 @@ _curMRPR.author.name,
 
 - (UIView*)tableFooterView{
     UIView *footerV = [[UIView alloc] initWithFrame:CGRectMake(0, 0, kScreen_Width, 90)];
-    _mergeBtn = [UIButton buttonWithStyle:StrapInfoStyle andTitle:@"确认合并" andFrame:CGRectMake(10, 0, kScreen_Width-10*2, 44) target:self action:@selector(mergeBtnClicked:)];
-    [_mergeBtn setCenter:footerV.center];
+    _mergeBtn = ({
+        UIButton *curButton = [UIButton new];
+        curButton.cornerRadius = 4.0;
+        [curButton addTarget:self action:@selector(mergeBtnClicked:) forControlEvents:UIControlEventTouchUpInside];
+        [curButton.titleLabel setFont:[UIFont systemFontOfSize:17]];
+        [curButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
+        [curButton setTitle:@"确认合并" forState:UIControlStateNormal];
+        [curButton setBackgroundColor:[UIColor colorWithHexString:@"0x425063"]];
+        curButton;
+    });
     [footerV addSubview:_mergeBtn];
+    [_mergeBtn mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.left.offset(kPaddingLeftWidth);
+        make.right.offset(-kPaddingLeftWidth);
+        make.centerY.equalTo(footerV);
+        make.height.mas_equalTo(44);
+    }];
     return footerV;
 }
 

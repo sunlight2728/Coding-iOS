@@ -24,7 +24,7 @@
         self.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
         self.backgroundColor = kColorTableBG;
         if (!_imgView) {
-            _imgView = [UIImageView new];
+            _imgView = [YLImageView new];
             [_imgView doBorderWidth:0.5 color:kColorDDD cornerRadius:kCommitListCell_UserWidth/2];
             [self.contentView addSubview:_imgView];
             [_imgView mas_makeConstraints:^(MASConstraintMaker *make) {
@@ -39,7 +39,7 @@
             [_titleLabel mas_makeConstraints:^(MASConstraintMaker *make) {
                 make.left.equalTo(_imgView.mas_right).offset(12);
                 make.right.equalTo(self.contentView);
-                make.top.equalTo(self.contentView).offset(15);
+                make.top.equalTo(self.contentView).offset(10);
                 make.height.mas_equalTo(30);
             }];
         }

@@ -33,6 +33,7 @@
 -(BOOL)containsEmoji;
 
 - (NSString *)emotionSpecailName;
+- (NSString *)emotionMonkeyName;
 
 + (NSString *)sizeDisplayWithByte:(CGFloat)sizeOfByte;
 
@@ -48,6 +49,7 @@
 - (BOOL)isPhoneNo;
 - (BOOL)isEmail;
 - (BOOL)isGK;
+- (BOOL)isFileName;
 
 - (NSRange)rangeByTrimmingLeftCharactersInSet:(NSCharacterSet *)characterSet;
 - (NSRange)rangeByTrimmingRightCharactersInSet:(NSCharacterSet *)characterSet;

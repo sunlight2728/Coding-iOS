@@ -53,9 +53,11 @@
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
-    _curUser = [Login curLoginUser];
     [self.myTableView reloadData];
+}
 
+- (User *)curUser{
+    return [Login curLoginUser];
 }
 
 - (void)setupHeaderV{
@@ -74,7 +76,7 @@
         [weakSelf goToSettingInfo]; //编辑
     };
     
-    [[Coding_NetAPIManager sharedManager] request_Users_activenessWithGlobalKey:_curUser.global_key andBlock:^(ActivenessModel *data, NSError *error) {
+    [[Coding_NetAPIManager sharedManager] request_Users_activenessWithGlobalKey:self.curUser.global_key andBlock:^(ActivenessModel *data, NSError *error) {
         weakSelf.activenessModel = data;
         [weakSelf.myTableView reloadData];
     }];
@@ -95,6 +97,8 @@
     if ((_dataIndex == 0 && self.curTweets.list.count <= 0) ||
         (_dataIndex == 1 && _dataList.count <= 0)) {
         [self refresh];
+    }else{
+        self.view.blankPageView.hidden = YES;
     }
 }
 
@@ -102,10 +106,10 @@
 
 - (void)refresh{
     if (_dataIndex == 0) {
-        _curUser = [Login curLoginUser];
+        self.curUser = [Login curLoginUser];
         [self.myTableView reloadData];
         __weak typeof(self) weakSelf = self;
-        [[Coding_NetAPIManager sharedManager] request_Users_activenessWithGlobalKey:_curUser.global_key andBlock:^(ActivenessModel *data, NSError *error) {
+        [[Coding_NetAPIManager sharedManager] request_Users_activenessWithGlobalKey:self.curUser.global_key andBlock:^(ActivenessModel *data, NSError *error) {
             weakSelf.activenessModel = data;
             [weakSelf.myTableView reloadData];
         }];
@@ -114,6 +118,13 @@
         if (!_isLoading) {
             [self requestTopicsMore:NO];
         }
+    }
+    if (self.myTableView.loadingView) {
+        CGFloat offsetY = _userInfoCell.frame.size.height + [UserActiveGraphCell cellHeight] + 80;
+        [self.myTableView.loadingView mas_updateConstraints:^(MASConstraintMaker *make) {
+            make.centerY.offset(offsetY);
+            make.height.mas_equalTo(200);
+        }];
     }
 }
 
@@ -132,11 +143,13 @@
 - (void)requestTopicsMore:(BOOL)loadMore{
     _willLoadMore = loadMore;
     _curPage = _willLoadMore? _curPage + 1: 0;
-   
+    if (self.dataList.count <= 0) {
+        [self.myTableView beginLoading];
+    }
     __weak typeof(self) weakSelf = self;
-    [[Coding_NetAPIManager sharedManager] request_JoinedTopicsWithUserGK:_curUser.global_key page:weakSelf.curPage block:^(id data, BOOL hasMoreData, NSError *error) {
+    [[Coding_NetAPIManager sharedManager] request_JoinedTopicsWithUserGK:self.curUser.global_key page:weakSelf.curPage block:^(id data, BOOL hasMoreData, NSError *error) {
         [weakSelf.refreshControl endRefreshing];
-        [weakSelf.view endLoading];
+        [weakSelf.myTableView endLoading];
         [weakSelf.myTableView.infiniteScrollingView stopAnimating];
         if (data) {
             if (weakSelf.willLoadMore) {
@@ -148,7 +161,7 @@
             weakSelf.myTableView.showsInfiniteScrolling = hasMoreData;
         }
         
-        CGFloat offsetY = _userInfoCell.frame.size.height + [UserActiveGraphCell cellHeight] + 100;
+        CGFloat offsetY = _userInfoCell.frame.size.height + [UserActiveGraphCell cellHeight] + 80;
         [weakSelf.view configBlankPage:EaseBlankPageTypeMyJoinedTopic hasData:weakSelf.dataList.count > 0 hasError:error != nil offsetY:offsetY reloadButtonBlock:^(id sender) {
             [weakSelf refresh];
         }];
@@ -159,19 +172,19 @@
 #pragma mark headerV
 - (void)fansCountBtnClicked{
     UsersViewController *vc = [[UsersViewController alloc] init];
-    vc.curUsers = [Users usersWithOwner:_curUser Type:UsersTypeFollowers];
+    vc.curUsers = [Users usersWithOwner:self.curUser Type:UsersTypeFollowers];
     [self.navigationController pushViewController:vc animated:YES];
 }
 - (void)followsCountBtnClicked{
     UsersViewController *vc = [[UsersViewController alloc] init];
-    vc.curUsers = [Users usersWithOwner:_curUser Type:UsersTypeFriends_Attentive];
+    vc.curUsers = [Users usersWithOwner:self.curUser Type:UsersTypeFriends_Attentive];
     [self.navigationController pushViewController:vc animated:YES];
 }
 
 - (void)userIconClicked{
     //        显示大图
     MJPhoto *photo = [[MJPhoto alloc] init];
-    photo.url = [_curUser.avatar urlWithCodePath];
+    photo.url = [self.curUser.avatar urlWithCodePath];
     
     MJPhotoBrowser *browser = [[MJPhotoBrowser alloc] init];
     browser.currentPhotoIndex = 0;
@@ -211,8 +224,13 @@
 - (CGFloat)tableView:(UITableView *)tableView heightForFooterInSection:(NSInteger)section{
     if (section < 2) {
         return 20;
+    }else{
+        if (_dataIndex == 0) {
+            return 0;
+        }else{
+            return _dataList.count == 0? self.view.height - self.sectionHeaderView.height: 0;
+        }
     }
-    return 0;
 }
 
 - (UIView *)tableView:(UITableView *)tableView viewForFooterInSection:(NSInteger)section{
@@ -234,7 +252,7 @@
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath{
     if (indexPath.section == 0) {
         EaseUserInfoCell *cell = self.userInfoCell;
-        cell.user = _curUser;
+        cell.user = self.curUser;
         return cell;
     } else if (indexPath.section == 1) {
         UserActiveGraphCell *cell = [tableView dequeueReusableCellWithIdentifier:kCellIdentifier_UserActiveGraphCell forIndexPath:indexPath];
@@ -254,7 +272,7 @@
 
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath{
     if (indexPath.section == 0) {
-        return [tableView cellHeightForIndexPath:indexPath model:_curUser keyPath:@"user" cellClass:[EaseUserInfoCell class] contentViewWidth:kScreen_Width];
+        return [tableView cellHeightForIndexPath:indexPath model:self.curUser keyPath:@"user" cellClass:[EaseUserInfoCell class] contentViewWidth:kScreen_Width];
         
     } else if (indexPath.section == 1) {
         return [UserActiveGraphCell cellHeight];

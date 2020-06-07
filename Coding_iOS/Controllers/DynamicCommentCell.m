@@ -52,7 +52,7 @@
             CGFloat borderWidth = 2;
             UIView *bgView = [[UIView alloc] initWithFrame:CGRectMake(kPaddingLeftWidth - borderWidth, curBottomY, 28+ 2*borderWidth, 28 + 2*borderWidth)];
             bgView.backgroundColor = kColorTableBG;
-            _ownerIconView = [[UIImageView alloc] initWithFrame:CGRectMake(0, 0, 28, 28)];
+            _ownerIconView = [[YLImageView alloc] initWithFrame:CGRectMake(0, 0, 28, 28)];
             _ownerIconView.layer.masksToBounds = YES;
             _ownerIconView.layer.cornerRadius = _ownerIconView.frame.size.width/2;
             
@@ -65,7 +65,7 @@
         }
         if (!_contentLabel) {
             _contentLabel = [[UITTTAttributedLabel alloc] initWithFrame:CGRectMake(kTaskCommentCell_LeftContentPading, curBottomY, kTaskCommentCell_ContentWidth, 30)];
-            _contentLabel.textColor = kColor222;
+            _contentLabel.textColor = kColorDark3;
             _contentLabel.font = kTaskCommentCell_FontContent;
             _contentLabel.linkAttributes = kLinkAttributes;
             _contentLabel.activeLinkAttributes = kLinkAttributesActive;
@@ -74,7 +74,7 @@
         }
         if (!_timeLabel) {
             _timeLabel = [[UILabel alloc] initWithFrame:CGRectMake(kTaskCommentCell_LeftContentPading, 0, kTaskCommentCell_ContentWidth, 20)];
-            _timeLabel.textColor = kColor999;
+            _timeLabel.textColor = kColorDark7;
             _timeLabel.font = [UIFont systemFontOfSize:12];
             [self.contentView addSubview:_timeLabel];
         }
@@ -95,7 +95,7 @@
             make.edges.equalTo(self.contentView).insets(UIEdgeInsetsMake(10, 60- 7, 10, 20));
         }];
         if (!_detailBtn) {
-            _detailBtn = [UIButton buttonWithTitle:@"查看详情" titleColor:kColorBrandGreen];
+            _detailBtn = [UIButton buttonWithTitle:@"查看详情" titleColor:kColorBrandBlue];
             _detailBtn.titleLabel.font = [UIFont systemFontOfSize:12];
             [_detailBtn addTarget:self action:@selector(goToDetail) forControlEvents:UIControlEventTouchUpInside];
             [self.contentView addSubview:_detailBtn];

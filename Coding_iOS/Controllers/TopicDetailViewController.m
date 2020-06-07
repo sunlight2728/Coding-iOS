@@ -66,6 +66,9 @@
         [tableView mas_makeConstraints:^(MASConstraintMaker *make) {
             make.edges.equalTo(self.view);
         }];
+        tableView.estimatedRowHeight = 0;
+        tableView.estimatedSectionHeaderHeight = 0;
+        tableView.estimatedSectionFooterHeight = 0;
         tableView;
     });
     _refreshControl = [[ODRefreshControl alloc] initInScrollView:self.myTableView];
@@ -123,7 +126,8 @@
 - (void)addtitleBtnClick
 {
     EditLabelViewController *vc = [[EditLabelViewController alloc] init];
-    vc.curProject = self.curTopic.project;
+//    vc.curProject = self.curTopic.project;
+    vc.curProject = self.curTopic.project ?: ({Project *p = [Project new]; p.id = self.curTopic.project_id; p;});
     vc.orignalTags = self.curTopic.mdLabels;
     @weakify(self);
     vc.tagsSelectedBlock = ^(EditLabelViewController *vc, NSMutableArray *selectedTags){
@@ -176,7 +180,7 @@
 {
     [UIView animateWithDuration:0.25 delay:0.0f options:UIViewAnimationOptionTransitionFlipFromBottom animations:^{
         UIEdgeInsets contentInsets= UIEdgeInsetsMake(0.0, 0.0, MAX(CGRectGetHeight(inputView.frame), heightToBottom), 0.0);;
-        CGFloat msgInputY = kScreen_Height - heightToBottom - 64;
+        CGFloat msgInputY = kScreen_Height - heightToBottom - (44 + kSafeArea_Top);
         
         self.myTableView.contentInset = contentInsets;
         self.myTableView.scrollIndicatorInsets = contentInsets;
@@ -260,11 +264,11 @@
 
 #pragma mark Table header footer
 - (CGFloat)tableView:(UITableView *)tableView heightForHeaderInSection:(NSInteger)section{
-    return section == 0? 1.0/[UIScreen mainScreen].scale: _curTopic.watchers.count > 0? 142: 88;
+    return section == 0? kLine_MinHeight: _curTopic.watchers.count > 0? 142: 88;
 }
 
 - (CGFloat)tableView:(UITableView *)tableView heightForFooterInSection:(NSInteger)section{
-    return section == 0? 10: 1.0/[UIScreen mainScreen].scale;
+    return section == 0? 10: kLine_MinHeight;
 }
 
 - (UIView *)tableView:(UITableView *)tableView viewForFooterInSection:(NSInteger)section{
@@ -288,7 +292,7 @@
             [weakSelf doCommentToTopic:nil ofAnswer:nil sender:sender];
         };
         _headerV.deleteBlock = ^(ProjectTopic *curTopic){
-            UIActionSheet *actionSheet = [UIActionSheet bk_actionSheetCustomWithTitle:@"删除此讨论" buttonTitles:nil destructiveTitle:@"确认删除" cancelTitle:@"取消" andDidDismissBlock:^(UIActionSheet *sheet, NSInteger index) {
+            UIAlertController *actionSheet = [UIAlertController ea_actionSheetCustomWithTitle:@"删除此讨论" buttonTitles:nil destructiveTitle:@"确认删除" cancelTitle:@"取消" andDidDismissBlock:^(UIAlertAction *action, NSInteger index) {
                 if (index == 0) {
                     [weakSelf deleteTopic:weakSelf.curTopic ofAnswer:nil isComment:NO];
                 }
@@ -389,7 +393,7 @@
     if (_toComment) {
         if ([Login isLoginUserGlobalKey:_toComment.owner.global_key]) {
             ESWeakSelf
-            UIActionSheet *actionSheet = [UIActionSheet bk_actionSheetCustomWithTitle:@"删除此评论" buttonTitles:nil destructiveTitle:@"确认删除" cancelTitle:@"取消" andDidDismissBlock:^(UIActionSheet *sheet, NSInteger index) {
+            UIAlertController *actionSheet = [UIAlertController ea_actionSheetCustomWithTitle:@"删除此评论" buttonTitles:nil destructiveTitle:@"确认删除" cancelTitle:@"取消" andDidDismissBlock:^(UIAlertAction *action, NSInteger index) {
                 ESStrongSelf
                 if (index == 0) {
                     [_self deleteTopic:_self.toComment ofAnswer:answer isComment:YES];
@@ -544,7 +548,7 @@
             _tipL = [UILabel new];
             _tipL.textColor = kColor999;
             _tipL.font = [UIFont systemFontOfSize:12];
-            [_tipL setAttrStrWithStr:@"尚未添加任何关注者，去添加" diffColorStr:@"去添加" diffColor:kColorBrandGreen];
+            [_tipL setAttrStrWithStr:@"尚未添加任何关注者，去添加" diffColorStr:@"去添加" diffColor:kColorBrandBlue];
             _tipL.userInteractionEnabled = YES;
             [_tipL bk_whenTapped:^{
                 if (weakSelf.goToUserBlock) {
@@ -555,6 +559,7 @@
         }
         if (!_addBtn) {
             _addBtn = [UIButton buttonWithType:UIButtonTypeCustom];
+            _addBtn.contentHorizontalAlignment = UIControlContentHorizontalAlignmentRight;
             [_addBtn setImage:[UIImage imageNamed:@"topic_add_watcher_btn"] forState:UIControlStateNormal];
             [_addBtn bk_addEventHandler:^(id sender) {
                 if (weakSelf.goToUserBlock) {
@@ -580,6 +585,7 @@
         }
         if (!_commentBtn) {
             _commentBtn = [UIButton buttonWithType:UIButtonTypeCustom];
+            _commentBtn.contentHorizontalAlignment = UIControlContentHorizontalAlignmentRight;
             [_commentBtn setImage:[UIImage imageNamed:@"tweet_comment_btn"] forState:UIControlStateNormal];
             [_commentBtn bk_addEventHandler:^(id sender) {
                 if (weakSelf.commentBlock) {
@@ -591,7 +597,7 @@
         if (!_deleteBtn) {
             _deleteBtn = [UIButton buttonWithType:UIButtonTypeCustom];
             [_deleteBtn setTitle:@"删除" forState:UIControlStateNormal];
-            [_deleteBtn setTitleColor:kColorBrandGreen forState:UIControlStateNormal];
+            [_deleteBtn setTitleColor:kColorBrandBlue forState:UIControlStateNormal];
             [_deleteBtn setTitleColor:[UIColor darkGrayColor] forState:UIControlStateHighlighted];
             _deleteBtn.titleLabel.font = [UIFont boldSystemFontOfSize:12];
             [_deleteBtn bk_addEventHandler:^(id sender) {
@@ -676,7 +682,7 @@
 
 - (UIView *)makeViewForUser:(User *)user{
     CGFloat width = 30.0;
-    UIImageView *imageV = [[UIImageView alloc] initWithFrame:CGRectMake(0, 0, width, width)];
+    UIImageView *imageV = [[YLImageView alloc] initWithFrame:CGRectMake(0, 0, width, width)];
     imageV.layer.masksToBounds = YES;
     imageV.layer.cornerRadius = width/2;
     imageV.layer.borderColor = [UIColor colorWithHexString:@"0xFFAE03"].CGColor;

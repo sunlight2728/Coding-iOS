@@ -59,31 +59,14 @@
         [tableView mas_makeConstraints:^(MASConstraintMaker *make) {
             make.edges.equalTo(self.view);
         }];
+        tableView.estimatedRowHeight = 0;
+        tableView.estimatedSectionHeaderHeight = 0;
+        tableView.estimatedSectionFooterHeight = 0;
         tableView;
     });
     
     _myRefreshControl = [[ODRefreshControl alloc] initInScrollView:self.myTableView];
     [_myRefreshControl addTarget:self action:@selector(refresh) forControlEvents:UIControlEventValueChanged];
-    
-//    _myToolBar = ({
-//        EaseToolBarItem *item = [EaseToolBarItem easeToolBarItemWithTitle:@" 发表评论..." image:@"button_file_comment" disableImage:nil];
-//        
-//        NSDictionary *attributes = @{NSFontAttributeName : [UIFont systemFontOfSize:15],
-//                                     NSForegroundColorAttributeName : [UIColor colorWithHexString:@"0xB5B5B5"]};
-//        [item setAttributes:attributes forUIControlState:UIControlStateNormal];
-//        
-//        EaseToolBar *toolBar = [EaseToolBar easeToolBarWithItems:@[item]];
-//        toolBar.delegate = self;
-//        [self.view addSubview:toolBar];
-//        [toolBar mas_makeConstraints:^(MASConstraintMaker *make) {
-//            make.bottom.equalTo(self.view.mas_bottom);
-//            make.size.mas_equalTo(toolBar.frame.size);
-//        }];
-//        toolBar;
-//    });    
-//    UIEdgeInsets contentInsets = UIEdgeInsetsMake(0.0, 0.0,CGRectGetHeight(self.myToolBar.frame), 0.0);
-//    self.myTableView.contentInset = contentInsets;
-//    self.myTableView.scrollIndicatorInsets = contentInsets;
     
     [self refresh];
 }
@@ -110,7 +93,7 @@
             self.activityList = data;
             [self.myTableView reloadData];
         }
-        [self.view configBlankPage:EaseBlankPageTypeView hasData:self.activityList.count > 0 hasError:error != nil reloadButtonBlock:^(id sender) {
+        [self.view configBlankPage:EaseBlankPageTypeView hasData:YES hasError:error != nil reloadButtonBlock:^(id sender) {
             [self refresh];
         }];
     }];

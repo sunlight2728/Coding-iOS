@@ -19,7 +19,9 @@
     uname(&systemInfo);
     NSString *deviceString = [NSString stringWithCString:systemInfo.machine encoding:NSUTF8StringEncoding];
     NSString *userAgent = [NSString stringWithFormat:@"%@/%@ (%@; iOS %@; Scale/%0.2f)", [[[NSBundle mainBundle] infoDictionary] objectForKey:(__bridge NSString *)kCFBundleExecutableKey] ?: [[[NSBundle mainBundle] infoDictionary] objectForKey:(__bridge NSString *)kCFBundleIdentifierKey], (__bridge id)CFBundleGetValueForInfoDictionaryKey(CFBundleGetMainBundle(), kCFBundleVersionKey) ?: [[[NSBundle mainBundle] infoDictionary] objectForKey:(__bridge NSString *)kCFBundleVersionKey], deviceString, [[UIDevice currentDevice] systemVersion], ([[UIScreen mainScreen] respondsToSelector:@selector(scale)] ? [[UIScreen mainScreen] scale] : 1.0f)];
-    return userAgent;//Coding_iOS/4.0.8.201611041630 (x86_64; iOS 10.1; Scale/2.00)
+    return userAgent;
+    //Coding_iOS/4.0.8.201611041630 (x86_64; iOS 10.1; Scale/2.00)
+    //Coding_Enterprise_iOS/4.0.8.201611041630 (x86_64; iOS 10.1; Scale/2.00)
 }
 
 - (NSString *)URLEncoding
@@ -100,12 +102,7 @@
             if (!imageName) {
                 imageName = [self stringByMatching:@"/static/project_icon/([a-zA-Z0-9\\-._]+)$" capture:1];
             }
-            if (imageName && imageName.length > 0) {
-                urlStr = [NSString stringWithFormat:@"http://coding-net-avatar.qiniudn.com/%@?imageMogr2/auto-orient/thumbnail/!%.0fx%.0fr", imageName, width, width];
-                canCrop = YES;
-            }else{
-                urlStr = [NSString stringWithFormat:@"%@%@", [NSObject baseURLStr], [self hasPrefix:@"/"]? [self substringFromIndex:1]: self];
-            }
+            urlStr = [NSString stringWithFormat:@"%@%@", [NSObject baseURLStr], [self hasPrefix:@"/"]? [self substringFromIndex:1]: self];
         }else{
             urlStr = self;
             if ([urlStr rangeOfString:@"qbox.me"].location != NSNotFound) {
@@ -154,7 +151,8 @@
     if (path.length > 0) {
         [result appendFormat:@"%@%@", ref.length > 0? @"/": @"", path];
     }
-    return [result URLEncoding];
+    return result;
+//    return [result URLEncoding];
 }
 - (CGSize)getSizeWithFont:(UIFont *)font constrainedToSize:(CGSize)size{
     CGSize resultSize = CGSizeZero;
@@ -299,6 +297,11 @@
     return [NSString emotion_specail_dict][self];
 }
 
+- (NSString *)emotionMonkeyName{
+    return [self emotionSpecailName];
+}
+
+
 + (NSString *)sizeDisplayWithByte:(CGFloat)sizeOfByte{
     NSString *sizeDisplayStr;
     if (sizeOfByte < 1024) {
@@ -374,6 +377,11 @@
     NSString *gkRegex = @"[A-Z0-9a-z-_]{3,32}";
     NSPredicate *gkTest = [NSPredicate predicateWithFormat:@"SELF MATCHES %@", gkRegex];
     return [gkTest evaluateWithObject:self];
+}
+- (BOOL)isFileName{
+    NSString *phoneRegex = @"[a-zA-Z0-9\\u4e00-\\u9fa5\\./_-]+$";
+    NSPredicate *phoneTest = [NSPredicate predicateWithFormat:@"SELF MATCHES %@", phoneRegex];
+    return [phoneTest evaluateWithObject:self];
 }
 
 

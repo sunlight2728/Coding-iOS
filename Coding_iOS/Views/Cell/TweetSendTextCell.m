@@ -155,7 +155,7 @@
     [_locationButton setWidth:MIN(kScreen_Width - 30,
                                   35+ [titleStr getWidthWithFont:_locationButton.titleLabel.font constrainedToSize:CGSizeMake(CGFLOAT_MAX, 20)])];
     
-    [_locationButton setTitleColor:[UIColor colorWithHexString:locationStr.length > 0? @"0x3bbd79": @"0x999999"] forState:UIControlStateNormal];
+    [_locationButton setTitleColor:[UIColor colorWithHexString:locationStr.length > 0? @"0x0060FF": @"0x999999"] forState:UIControlStateNormal];
     [_locationButton setImage:[UIImage imageNamed:locationStr.length > 0? @"icon_locationed": @"icon_not_locationed"] forState:UIControlStateNormal];
     [_locationButton setTitle:titleStr forState:UIControlStateNormal];
     return _locationButton;
@@ -230,7 +230,8 @@
     CGRect keyboardEndFrame = [[userInfo objectForKey:UIKeyboardFrameEndUserInfoKey] CGRectValue];
     [UIView animateWithDuration:animationDuration delay:0.0f options:[UIView animationOptionsForCurve:animationCurve] animations:^{
         CGFloat keyboardY =  keyboardEndFrame.origin.y;
-        [self.footerToolBar setY:keyboardY- CGRectGetHeight(self.footerToolBar.frame)];
+        CGFloat footerToolBarY = keyboardY- CGRectGetHeight(self.footerToolBar.frame) - ((keyboardY+1 > kScreen_Height)? kSafeArea_Bottom: 0);
+        [self.footerToolBar setY:footerToolBarY];
     } completion:^(BOOL finished) {
     }];
 }

@@ -16,7 +16,7 @@
 @class TweetImage;
 
 @interface Tweet : NSObject
-@property (readwrite, nonatomic, strong) NSString *content, *device, *location, *coord, *address;
+@property (readwrite, nonatomic, strong) NSString *content, *device, *location, *coord, *address, *raw;
 @property (readwrite, nonatomic, strong) NSNumber *liked, *rewarded, *activity_id, *id, *comments, *likes, *rewards;
 @property (readwrite, nonatomic, strong) NSDate *created_at, *sort_time;
 @property (readwrite, nonatomic, strong) User *owner;
@@ -27,7 +27,7 @@
 @property (nonatomic,strong) TweetSendLocationResponse *locationData;
 
 @property (readwrite, nonatomic, strong) NSMutableArray *tweetImages;//对 selectedAssetURLs 操作即可，最好不要直接赋值。。应用跳转带的图片会直接对 tweetImages赋值
-@property (readwrite, nonatomic, strong) NSMutableArray *selectedAssetURLs;
+@property (readwrite, nonatomic, strong) NSMutableArray *selectedAssetLocalIdentifiers;
 @property (readwrite, nonatomic, strong) NSString *tweetContent;
 @property (readwrite, nonatomic, strong) NSString *nextCommentStr;
 @property (strong, nonatomic) NSString *callback;
@@ -39,9 +39,9 @@
 
 - (BOOL)isProjectTweet;
 
-- (void)addASelectedAssetURL:(NSURL *)assetURL;
-- (void)deleteASelectedAssetURL:(NSURL *)assetURL;
-- (void)deleteATweetImage:(TweetImage *)tweetImage;
+- (void)addSelectedAssetLocalIdentifier:(NSString *)localIdentifier;
+- (void)deleteSelectedAssetLocalIdentifier:(NSString *)localIdentifier;
+- (void)deleteTweetImage:(TweetImage *)tweetImage;
 
 - (NSInteger)numOfComments;
 - (BOOL)hasMoreComments;
@@ -95,11 +95,20 @@ typedef NS_ENUM(NSInteger, TweetImageUploadState)
     TweetImageUploadStateFail
 };
 
+typedef NS_ENUM(NSInteger, TweetImageDownloadState)
+{
+    TweetImageDownloadStateInit = 0,
+    TweetImageDownloadStateIng,
+    TweetImageDownloadStateSuccess,
+    TweetImageDownloadStateFail
+};
+
 @interface TweetImage : NSObject
 @property (readwrite, nonatomic, strong) UIImage *image, *thumbnailImage;
-@property (strong, nonatomic) NSURL *assetURL;
+@property (strong, nonatomic) NSString *assetLocalIdentifier;
 @property (assign, nonatomic) TweetImageUploadState uploadState;
+@property (assign, nonatomic) TweetImageDownloadState downloadState;
 @property (readwrite, nonatomic, strong) NSString *imageStr;
-+ (instancetype)tweetImageWithAssetURL:(NSURL *)assetURL;
-+ (instancetype)tweetImageWithAssetURL:(NSURL *)assetURL andImage:(UIImage *)image;
++ (instancetype)tweetImageWithAssetLocalIdentifier:(NSString *)localIdentifier;
++ (instancetype)tweetImageWithAssetLocalIdentifier:(NSString *)localIdentifier andImage:(UIImage *)image;
 @end

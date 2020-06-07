@@ -21,7 +21,9 @@ typedef NS_ENUM(NSInteger, EaseBlankPageType)
     EaseBlankPageTypeTask,
     EaseBlankPageTypeTopic,
     EaseBlankPageTypeTweet,
+    EaseBlankPageTypeTweetAction,
     EaseBlankPageTypeTweetOther,
+    EaseBlankPageTypeTweetProject,
     EaseBlankPageTypeProject,
     EaseBlankPageTypeProjectOther,
     EaseBlankPageTypeFileDleted,
@@ -35,6 +37,7 @@ typedef NS_ENUM(NSInteger, EaseBlankPageType)
     EaseBlankPageTypeFileTypeCannotSupport,
     EaseBlankPageTypeViewTips,
     EaseBlankPageTypeShopOrders,
+    EaseBlankPageTypeShopUnPayOrders,
     EaseBlankPageTypeShopSendOrders,
     EaseBlankPageTypeShopUnSendOrders,
     EaseBlankPageTypeNoExchangeGoods,
@@ -44,6 +47,12 @@ typedef NS_ENUM(NSInteger, EaseBlankPageType)
     EaseBlankPageTypeProject_WATCHED,
     EaseBlankPageTypeProject_STARED,
     EaseBlankPageTypeProject_SEARCH,
+    EaseBlankPageTypeTeam,
+    EaseBlankPageTypeFile,
+    EaseBlankPageTypeMessageList,
+    EaseBlankPageTypeViewPurchase,
+    EaseBlankPageTypeCode,
+    EaseBlankPageTypeWiki,
 };
 
 typedef NS_ENUM(NSInteger, BadgePositionType) {
@@ -119,8 +128,8 @@ typedef NS_ENUM(NSInteger, BadgePositionType) {
 
 @interface EaseBlankPageView : UIView
 @property (strong, nonatomic) UIImageView *monkeyView;
-@property (strong, nonatomic) UILabel *tipLabel;
-@property (strong, nonatomic) UIButton *reloadButton;
+@property (strong, nonatomic) UILabel *tipLabel, *titleLabel;
+@property (strong, nonatomic) UIButton *reloadButton, *actionButton;
 @property (assign, nonatomic) EaseBlankPageType curType;
 @property (copy, nonatomic) void(^reloadButtonBlock)(id sender);
 @property (copy, nonatomic) void(^loadAndShowStatusBlock)();

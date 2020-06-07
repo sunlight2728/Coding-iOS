@@ -5,7 +5,7 @@
 //  Created by Ease on 15/6/1.
 //  Copyright (c) 2015年 Coding. All rights reserved.
 //
-#define kMRPRDetailViewController_BottomViewHeight 49.0
+#define kMRPRDetailViewController_BottomViewHeight 56.0
 #import "PRDetailViewController.h"
 #import "Coding_NetAPIManager.h"
 #import "FunctionTipsManager.h"
@@ -69,6 +69,9 @@ typedef NS_ENUM(NSInteger, MRPRAction) {
         [tableView mas_makeConstraints:^(MASConstraintMaker *make) {
             make.edges.equalTo(self.view);
         }];
+        tableView.estimatedRowHeight = 0;
+        tableView.estimatedSectionHeaderHeight = 0;
+        tableView.estimatedSectionFooterHeight = 0;
         tableView;
     });
     _myRefreshControl = [[ODRefreshControl alloc] initInScrollView:self.myTableView];
@@ -96,7 +99,7 @@ typedef NS_ENUM(NSInteger, MRPRAction) {
             NSArray *buttonArray;
             if (canAction && canCancel) {//三个按钮
                 buttonArray = @[[self buttonWithType:MRPRActionAccept],
-                                [self buttonWithType:MRPRActionRefuse],
+//                                [self buttonWithType:MRPRActionRefuse],
                                 [self buttonWithType:MRPRActionCancel]];
             }else if (canAction && !canCancel){//两个按钮
                 buttonArray = @[[self buttonWithType:MRPRActionAccept],
@@ -107,7 +110,7 @@ typedef NS_ENUM(NSInteger, MRPRAction) {
                 buttonArray = nil;
             }
             if (buttonArray.count > 0) {
-                CGFloat buttonHeight = 29;
+                CGFloat buttonHeight = 36;
                 CGFloat padding = 15;
                 CGFloat buttonWidth = ((kScreen_Width - 2*kPaddingLeftWidth) - padding* (buttonArray.count -1))/buttonArray.count;
                 CGFloat buttonY = (kMRPRDetailViewController_BottomViewHeight - buttonHeight)/2;
@@ -167,24 +170,22 @@ typedef NS_ENUM(NSInteger, MRPRAction) {
     curButton.layer.cornerRadius = 2.0;
     curButton.tag = actionType;
     [curButton addTarget:self action:@selector(actionMRPR:) forControlEvents:UIControlEventTouchUpInside];
-    [curButton.titleLabel setFont:[UIFont systemFontOfSize:13]];
-    
+    [curButton.titleLabel setFont:[UIFont systemFontOfSize:15]];
     NSString *title, *colorStr;
     if (actionType == MRPRActionAccept) {
         title = @"合并";
-        colorStr = @"0x4E90BF";
+        colorStr = @"0x425063";
         if (_curMRPRInfo.mrpr.status == MRPRStatusCannotMerge) {
             curButton.alpha = 0.5;
         }
-    }else if (actionType == MRPRActionRefuse){
+    } else if (actionType == MRPRActionRefuse){
         title = @"拒绝";
-        colorStr = @"0xE15957";
-    }else if (actionType == MRPRActionCancel){
+        colorStr = @"0xF56061";
+    } else if (actionType == MRPRActionCancel){
         title = @"取消";
-        colorStr = @"0xF8F8F8";
-        [curButton doBorderWidth:0.5 color:[UIColor colorWithHexString:@"0xB5B5B5"] cornerRadius:2.0];
+        colorStr = @"0xD8DDE4";
     }
-    [curButton setTitleColor:[UIColor colorWithHexString:(actionType == MRPRActionCancel? @"0x222222": @"0xffffff")] forState:UIControlStateNormal];
+    [curButton setTitleColor:[UIColor colorWithHexString:(actionType == MRPRActionCancel? @"0x323A45": @"0xFFFFFF")] forState:UIControlStateNormal];
     [curButton setTitle:title forState:UIControlStateNormal];
     [curButton setBackgroundColor:[UIColor colorWithHexString:colorStr]];
     return curButton;
@@ -194,7 +195,7 @@ typedef NS_ENUM(NSInteger, MRPRAction) {
     NSString *tipStr;
     if (sender.tag == MRPRActionAccept) {//合并
         if (_curMRPRInfo.mrpr.status == MRPRStatusCannotMerge) {//不能合并
-            tipStr = @"Coding 不能帮你在线自动合并这个合并请求。";
+            tipStr = @"CODING 不能帮你在线自动合并这个合并请求。";
             kTipAlert(@"%@", tipStr);
         }else{
             MRPRAcceptViewController *vc = [MRPRAcceptViewController new];
@@ -209,14 +210,14 @@ typedef NS_ENUM(NSInteger, MRPRAction) {
         }
     }else if (sender.tag == MRPRActionRefuse){//拒绝
         tipStr = [_curMRPRInfo.mrpr isMR]? @"确定要拒绝这个 Merge Request 么？": @"确定要拒绝这个 Pull Request 么？";
-        [[UIActionSheet bk_actionSheetCustomWithTitle:tipStr buttonTitles:@[@"确定"] destructiveTitle:nil cancelTitle:@"取消" andDidDismissBlock:^(UIActionSheet *sheet, NSInteger index) {
+        [[UIAlertController ea_actionSheetCustomWithTitle:tipStr buttonTitles:@[@"确定"] destructiveTitle:nil cancelTitle:@"取消" andDidDismissBlock:^(UIAlertAction *action, NSInteger index) {
             if (index == 0) {
                 [weakSelf refuseMRPR];
             }
         }] showInView:self.view];
     }else if (sender.tag == MRPRActionCancel){//取消
         tipStr = [_curMRPRInfo.mrpr isMR]? @"确定要取消这个 Merge Request 么？": @"确定要取消这个 Pull Request 么？";
-        [[UIActionSheet bk_actionSheetCustomWithTitle:tipStr buttonTitles:@[@"确定"] destructiveTitle:nil cancelTitle:@"取消" andDidDismissBlock:^(UIActionSheet *sheet, NSInteger index) {
+        [[UIAlertController ea_actionSheetCustomWithTitle:tipStr buttonTitles:@[@"确定"] destructiveTitle:nil cancelTitle:@"取消" andDidDismissBlock:^(UIAlertAction *action, NSInteger index) {
             if (index == 0) {
                 [weakSelf cancelMRPR];
             }
@@ -245,7 +246,7 @@ typedef NS_ENUM(NSInteger, MRPRAction) {
 }
 #pragma mark TableM Footer Header
 - (CGFloat)tableView:(UITableView *)tableView heightForFooterInSection:(NSInteger)section{
-    return 20.0;
+    return 15.0;
 }
 - (CGFloat)tableView:(UITableView *)tableView heightForHeaderInSection:(NSInteger)section{
     return 0.5;

@@ -11,6 +11,7 @@
 #import "WebContentManager.h"
 #import "EaseMarkdownTextView.h"
 #import "WebViewController.h"
+#import "UIViewController+BackButtonHandler.h"
 
 @interface EditCodeViewController ()<UIWebViewDelegate>
 @property (strong, nonatomic) UISegmentedControl *segmentedControl;
@@ -68,6 +69,32 @@
 //    if (self.curIndex == 0 && self.editView) {
 //        [self.editView becomeFirstResponder];
 //    }
+    //禁用屏幕左滑返回手势
+    if ([self.navigationController respondsToSelector:@selector(interactivePopGestureRecognizer)]) {
+        self.navigationController.interactivePopGestureRecognizer.enabled = NO;
+    }
+}
+
+- (void)viewDidDisappear:(BOOL)animated {
+    [super viewDidDisappear:animated];
+    //开启屏幕左滑返回手势
+    if ([self.navigationController respondsToSelector:@selector(interactivePopGestureRecognizer)]) {
+        self.navigationController.interactivePopGestureRecognizer.enabled = YES;
+    }
+}
+
+- (BOOL)navigationShouldPopOnBackButton{
+    if (![_myCodeFile.editData isEqualToString:_myCodeFile.file.data]) {
+        __weak typeof(self) weakSelf = self;
+        [[UIAlertController ea_alertViewWithTitle:@"提示" message:@"如果不保存，更改将丢失，是否确认返回？" buttonTitles:@[@"确认返回"] destructiveTitle:nil cancelTitle:@"取消" andDidDismissBlock:^(UIAlertAction *action, NSInteger index) {
+            if (index == 0) {
+                [weakSelf.navigationController popViewControllerAnimated:YES];
+            }
+        }] show];
+        return NO;
+    }else{
+        return YES;
+    }
 }
 
 #pragma mark UISegmentedControl
@@ -176,7 +203,9 @@
         [NSObject showHudTipStr:@"文件无改动"];
         return;
     }
+    [NSObject showHUDQueryStr:@"正在保存..."];
     [[Coding_NetAPIManager sharedManager] request_EditCodeFile:_myCodeFile withPro:_myProject andBlock:^(id data, NSError *error) {
+        [NSObject hideHUDQuery];
         if (data) {
             if (self.savedSucessBlock) {
                 self.savedSucessBlock();

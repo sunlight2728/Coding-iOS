@@ -14,6 +14,7 @@
 
 @interface EaseUserInfoCell ()
 @property (nonatomic, strong) UIButton *headIconButton;
+@property (strong, nonatomic) UIImageView *vipV;
 @property (nonatomic, strong) UIButton *fansButton; //粉丝
 @property (nonatomic, strong) UIButton *followsButton; //关注
 @property (nonatomic, strong) UIButton *addFollowsButton; //添加关注
@@ -115,6 +116,12 @@
     [_headIconButton addTarget:self action:@selector(userIconButtonClicked:) forControlEvents:UIControlEventTouchUpInside];
     [self.contentView addSubview:_headIconButton];
     
+    _vipV = [UIImageView new];
+    [self.contentView addSubview:_vipV];
+    [_vipV mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.right.bottom.equalTo(_headIconButton);
+    }];
+    
     _fansButton = [[UIButton alloc] init];
     _fansButton.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
     _fansButton.titleLabel.font = [UIFont boldSystemFontOfSize:15];
@@ -143,7 +150,7 @@
 
     
     _addFollowsButton = [[UIButton alloc] init];
-    [_addFollowsButton setTitleColor:[UIColor colorWithRGBHex:0x2ebe76] forState:UIControlStateNormal];
+    [_addFollowsButton setTitleColor:[UIColor colorWithRGBHex:0x0060FF] forState:UIControlStateNormal];
     _addFollowsButton.titleLabel.font = [UIFont systemFontOfSize:13];
     _addFollowsButton.borderWidth = 1;
     _addFollowsButton.borderColor = [UIColor colorWithRGBHex:0xd8dde4];
@@ -223,6 +230,8 @@
     }
     
     [_headIconButton sd_setBackgroundImageWithURL:[user.avatar urlImageWithCodePathResize:2* _headIconButton.width] forState:UIControlStateNormal placeholderImage:kPlaceholderMonkeyRoundWidth(54.0)];
+    _vipV.image = [UIImage imageNamed:[NSString stringWithFormat:@"vip_%@_75", _user.vip]];
+
     [_fansButton setTitle:[NSString stringWithFormat:@"粉丝  %@", user.fans_count.stringValue] forState:UIControlStateNormal];
     [_fansButton.titleLabel colorTextWithColor:[UIColor colorWithRGBHex:0x76808e] range:NSMakeRange(0, 2)];
     [_fansButton.titleLabel fontTextWithFont:[UIFont systemFontOfSize:12] range:NSMakeRange(0, 2)];
@@ -245,7 +254,7 @@
     }else{
         addFollowsButtonImageName = @"user_info_addAttention";
         addFollowsButtonTitle = @" 关注";
-        [_addFollowsButton setTitleColor:[UIColor colorWithRGBHex:0x2ebe76] forState:UIControlStateNormal];
+        [_addFollowsButton setTitleColor:[UIColor colorWithRGBHex:0x0060FF] forState:UIControlStateNormal];
     }
     [_addFollowsButton setImage:[UIImage imageNamed:addFollowsButtonImageName] forState:UIControlStateNormal];
     [_addFollowsButton setTitle:addFollowsButtonTitle forState:UIControlStateNormal];

@@ -50,7 +50,7 @@
     _selImageView.sd_layout.rightSpaceToView(self.contentView, 20).centerYEqualToView(self.contentView).widthIs(20).heightIs(21);
     
     _line = [[UILabel alloc] init];
-    _line.backgroundColor = [UIColor colorWithRGBHex:0xdddddd];
+    _line.backgroundColor = kColorDDD;
     [self.contentView addSubview:_line];
     _line.sd_layout.leftSpaceToView(self.contentView, 0).rightSpaceToView(self.contentView, 0).bottomSpaceToView(self.contentView, 0).heightIs(.5);
     _line.hidden = YES;
@@ -58,9 +58,10 @@
 }
 
 - (void)setIsSel:(BOOL)isSel {
-    _titleLab.textColor=isSel?kColorBrandGreen:kColor222;
-    _selImageView.hidden = !isSel;
-
+    _titleLab.textColor=isSel?kColorLightBlue:kColor222;
+//    _selImageView.hidden = !isSel;
+    _selImageView.hidden = YES;
+    self.accessoryType = isSel? UITableViewCellAccessoryCheckmark: UITableViewCellAccessoryNone;
 }
 
 - (void)setTitle:(NSString *)title {

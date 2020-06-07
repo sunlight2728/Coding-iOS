@@ -27,6 +27,11 @@
 static NSString *kFunctionTipStr_StartLinkPrefix = @"StartLinkPrefix";
 ////version 4.0.8
 //static NSString *kFunctionTipStr_File_3V = @"File_3V";
+//version 4.5
+static NSString *kFunctionTipStr_Me_Shop = @"Me_Shop";
+//version 4.9.5
+static NSString *kFunctionTipStr_TaskTitleViewTap = @"TaskTitleViewTap";
+
 
 #import <Foundation/Foundation.h>
 

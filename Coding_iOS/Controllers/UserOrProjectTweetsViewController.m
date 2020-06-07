@@ -54,7 +54,7 @@
     if (_curTweets.tweetType == TweetTypeUserSingle) {
         self.title = _curTweets.curUser.name;
     }else if (_curTweets.tweetType == TweetTypeProject){
-        self.title = _curTweets.curPro.name ?: @"项目内冒泡";
+        self.title = @"公告列表";
         self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithImage:[UIImage imageNamed:@"addBtn_Nav"] style:UIBarButtonItemStylePlain target:self action:@selector(addBtnClicked)];
     }else{
         self.title = @"冒泡列表";
@@ -73,6 +73,9 @@
         [tableView mas_makeConstraints:^(MASConstraintMaker *make) {
             make.edges.equalTo(self.view);
         }];
+        tableView.estimatedRowHeight = 0;
+        tableView.estimatedSectionHeaderHeight = 0;
+        tableView.estimatedSectionFooterHeight = 0;
         tableView;
     });
     _refreshControl = [[ODRefreshControl alloc] initInScrollView:self.myTableView];
@@ -87,6 +90,10 @@
     [_myTableView addInfiniteScrollingWithActionHandler:^{
         [weakSelf refreshMore];
     }];
+}
+
+- (void)viewWillAppear:(BOOL)animated{
+    [super viewWillAppear:animated];
     [self refresh];
 }
 
@@ -131,7 +138,7 @@
 - (void)messageInputView:(UIMessageInputView *)inputView heightToBottomChenged:(CGFloat)heightToBottom{
     [UIView animateWithDuration:0.25 delay:0.0f options:UIViewAnimationOptionTransitionFlipFromBottom animations:^{
         UIEdgeInsets contentInsets= UIEdgeInsetsMake(0.0, 0.0, heightToBottom, 0.0);;
-        CGFloat msgInputY = kScreen_Height - heightToBottom - 64;
+        CGFloat msgInputY = kScreen_Height - heightToBottom - (44 + kSafeArea_Top);
         
         self.myTableView.contentInset = contentInsets;
         self.myTableView.scrollIndicatorInsets = contentInsets;
@@ -147,6 +154,13 @@
 
 
 #pragma mark M
+- (EaseBlankPageType)blankType{
+    EaseBlankPageType blankType = ([[Login curLoginUser] isSameToUser:self.curTweets.curUser]? EaseBlankPageTypeTweet:
+                                   _curTweets.tweetType == TweetTypeProject? EaseBlankPageTypeTweetProject:
+                                   EaseBlankPageTypeTweetOther);
+    return blankType;
+}
+
 - (void)deleteTweet:(Tweet *)curTweet outTweetsIndex:(NSInteger)outTweetsIndex{
     ESWeakSelf;
     [[Coding_NetAPIManager sharedManager] request_Tweet_Delete_WithObj:curTweet andBlock:^(id data, NSError *error) {
@@ -154,7 +168,8 @@
         if (data) {
             [_self.curTweets.list removeObject:curTweet];
             [_self.myTableView reloadData];
-            [_self.view configBlankPage:([[Login curLoginUser] isSameToUser:_self.curTweets.curUser]? EaseBlankPageTypeTweet: EaseBlankPageTypeTweetOther)  hasData:(_self.curTweets.list.count > 0) hasError:NO offsetY:[_self blankPageOffsetY] reloadButtonBlock:^(id sender) {
+            
+            [_self.view configBlankPage:[_self blankType] hasData:(_self.curTweets.list.count > 0) hasError:NO offsetY:[_self blankPageOffsetY] reloadButtonBlock:^(id sender) {
                 ESStrongSelf;
                 [_self sendRequest];
             }];
@@ -192,30 +207,35 @@
 }
 
 - (void)sendRequest{
-       if (_curTweets.tweetType == TweetTypeUserSingle && _curTweets.curUser.name.length <= 0) {
-        [self refreshCurUser];
-        return;
+    if (self.curTweets.list.count <= 0) {
+        [self.myTableView beginLoading];
     }
-    
-    __weak typeof(self) weakSelf = self;
-    [[Coding_NetAPIManager sharedManager] request_Tweets_WithObj:_curTweets andBlock:^(id data, NSError *error) {
-       
-        [weakSelf.myTableView.infiniteScrollingView stopAnimating];
-        if (data) {
-            [weakSelf.curTweets configWithTweets:data];
-            [weakSelf.myTableView reloadData];
-            weakSelf.myTableView.showsInfiniteScrolling = weakSelf.curTweets.canLoadMore;
-        }
-        [weakSelf.view configBlankPage:([[Login curLoginUser] isSameToUser:self.curTweets.curUser]? EaseBlankPageTypeTweet: EaseBlankPageTypeTweetOther) hasData:(weakSelf.curTweets.list.count > 0) hasError:(error != nil) offsetY:[weakSelf blankPageOffsetY] reloadButtonBlock:^(id sender) {
-            [weakSelf sendRequest];
+    if (_curTweets.tweetType == TweetTypeUserSingle && _curTweets.curUser.name.length <= 0) {
+        [self refreshCurUser];
+    }else if (_curTweets.tweetType == TweetTypeProject && ![_curTweets.curPro.id isKindOfClass:[NSNumber class]]){
+        [self refreshCurPro];
+    }else{
+        __weak typeof(self) weakSelf = self;
+        [[Coding_NetAPIManager sharedManager] request_Tweets_WithObj:_curTweets andBlock:^(id data, NSError *error) {
+            [weakSelf.myTableView endLoading];
+            [weakSelf.refreshControl endRefreshing];
+            [weakSelf.myTableView.infiniteScrollingView stopAnimating];
+            if (data) {
+                [weakSelf.curTweets configWithTweets:data];
+                [weakSelf.myTableView reloadData];
+                weakSelf.myTableView.showsInfiniteScrolling = weakSelf.curTweets.canLoadMore;
+            }
+            [weakSelf.view configBlankPage:[weakSelf blankType] hasData:(weakSelf.curTweets.list.count > 0) hasError:(error != nil) offsetY:[weakSelf blankPageOffsetY] reloadButtonBlock:^(id sender) {
+                [weakSelf sendRequest];
+            }];
         }];
-    }];
+    }
 }
 
 - (CGFloat)blankPageOffsetY{//MeDisplayViewController
     CGFloat offsetY = 0;
     if ([self isMemberOfClass:NSClassFromString(@"MeDisplayViewController")]) {
-        offsetY = ((UITableViewCell *)[self valueForKey:@"userInfoCell"]).frame.size.height + [UserActiveGraphCell cellHeight] + 100;
+        offsetY = ((UITableViewCell *)[self valueForKey:@"userInfoCell"]).frame.size.height + [UserActiveGraphCell cellHeight] + 80;
     }
     return offsetY;
 }
@@ -228,14 +248,29 @@
             weakSelf.title = weakSelf.curTweets.curUser.name;
             [weakSelf sendRequest];
         }else{
-            [weakSelf.view endLoading];
-            [weakSelf.view configBlankPage:([[Login curLoginUser] isSameToUser:self.curTweets.curUser]? EaseBlankPageTypeTweet: EaseBlankPageTypeTweetOther) hasData:(weakSelf.curTweets.list.count > 0) hasError:YES offsetY:[weakSelf blankPageOffsetY] reloadButtonBlock:^(id sender) {
+            [weakSelf.myTableView endLoading];
+            [weakSelf.view configBlankPage:[weakSelf blankType] hasData:(weakSelf.curTweets.list.count > 0) hasError:YES offsetY:[weakSelf blankPageOffsetY] reloadButtonBlock:^(id sender) {
                 [weakSelf sendRequest];
             }];
         }
     }];
 }
 
+- (void)refreshCurPro{
+    __weak typeof(self) weakSelf = self;
+    [[Coding_NetAPIManager sharedManager] request_ProjectDetail_WithObj:_curTweets.curPro andBlock:^(id data, NSError *error) {
+        if (data) {
+            weakSelf.curTweets.curPro = data;
+            weakSelf.title = weakSelf.curTweets.curPro.name;
+            [weakSelf sendRequest];
+        }else{
+            [weakSelf.myTableView endLoading];
+            [weakSelf.view configBlankPage:[weakSelf blankType] hasData:(weakSelf.curTweets.list.count > 0) hasError:YES offsetY:[weakSelf blankPageOffsetY] reloadButtonBlock:^(id sender) {
+                [weakSelf sendRequest];
+            }];
+        }
+    }];
+}
 
 #pragma mark TableM
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section{
@@ -264,7 +299,7 @@
             
             if ([Login isLoginUserGlobalKey:weakSelf.commentToUser.global_key]) {
                 
-                UIActionSheet *actionSheet = [UIActionSheet bk_actionSheetCustomWithTitle:@"删除此评论" buttonTitles:nil destructiveTitle:@"确认删除" cancelTitle:@"取消" andDidDismissBlock:^(UIActionSheet *sheet, NSInteger index) {
+                UIAlertController *actionSheet = [UIAlertController ea_actionSheetCustomWithTitle:@"删除此评论" buttonTitles:nil destructiveTitle:@"确认删除" cancelTitle:@"取消" andDidDismissBlock:^(UIAlertAction *action, NSInteger index) {
                     if (index == 0 && weakSelf.commentIndex >= 0) {
                         Comment *comment  = [weakSelf.commentTweet.comment_list objectAtIndex:weakSelf.commentIndex];
                         [weakSelf deleteComment:comment ofTweet:weakSelf.commentTweet];
@@ -282,9 +317,15 @@
         [weakSelf.myTableView reloadData];
     };
     cell.userBtnClickedBlock = ^(User *curUser){
-        UserInfoViewController *vc = [[UserInfoViewController alloc] init];
-        vc.curUser = curUser;
-        [self.navigationController pushViewController:vc animated:YES];
+        if (kTarget_Enterprise) {
+            UserInfoDetailViewController *vc = [UserInfoDetailViewController new];
+            vc.curUser = curUser;
+            [self.navigationController pushViewController:vc animated:YES];
+        }else{
+            UserInfoViewController *vc = [[UserInfoViewController alloc] init];
+            vc.curUser = curUser;
+            [self.navigationController pushViewController:vc animated:YES];
+        }
     };
     cell.moreLikersBtnClickedBlock = ^(Tweet *curTweet){
         LikersViewController *vc = [[LikersViewController alloc] init];
@@ -297,7 +338,7 @@
         }
         self.deleteTweet = curTweet;
         self.deleteTweetsIndex = outTweetsIndex;
-        UIActionSheet *actionSheet = [UIActionSheet bk_actionSheetCustomWithTitle:@"删除此冒泡" buttonTitles:nil destructiveTitle:@"确认删除" cancelTitle:@"取消" andDidDismissBlock:^(UIActionSheet *sheet, NSInteger index) {
+        UIAlertController *actionSheet = [UIAlertController ea_actionSheetCustomWithTitle:curTweet.isProjectTweet? @"删除此公告": @"删除此冒泡" buttonTitles:nil destructiveTitle:@"确认删除" cancelTitle:@"取消" andDidDismissBlock:^(UIAlertAction *action, NSInteger index) {
             if (index == 0) {
                 [weakSelf deleteTweet:weakSelf.deleteTweet outTweetsIndex:weakSelf.deleteTweetsIndex];
             }
@@ -323,6 +364,8 @@
 }
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath{
+    [tableView deselectRowAtIndexPath:indexPath animated:YES];
+
     Tweet *toTweet = [_curTweets.list objectAtIndex:indexPath.row];
     [self goToDetailWithTweet:toTweet];
 }
@@ -336,7 +379,7 @@
     vc.deleteTweetBlock = ^(Tweet *toDeleteTweet){
         [weakSelf.curTweets.list removeObject:toDeleteTweet];
         [weakSelf.myTableView reloadData];
-        [weakSelf.view configBlankPage:([[Login curLoginUser] isSameToUser:self.curTweets.curUser]? EaseBlankPageTypeTweet: EaseBlankPageTypeTweetOther) hasData:(weakSelf.curTweets.list.count > 0) hasError:NO offsetY:[weakSelf blankPageOffsetY] reloadButtonBlock:^(id sender) {
+        [weakSelf.view configBlankPage:[weakSelf blankType] hasData:(weakSelf.curTweets.list.count > 0) hasError:NO offsetY:[weakSelf blankPageOffsetY] reloadButtonBlock:^(id sender) {
             [weakSelf sendRequest];
         }];
     };

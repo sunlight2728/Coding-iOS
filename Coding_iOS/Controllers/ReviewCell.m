@@ -12,7 +12,7 @@
 
 - (void)awakeFromNib{
     [super awakeFromNib];
-    self.userIcon.frame = CGRectMake(12, 5, 33, 33);
+//    self.userIcon.frame = CGRectMake(12, 5, 33, 33);
 }
 
 - (void)initCellWithReviewer:(User*)reviewer
@@ -25,11 +25,11 @@
         self.userState.text = @"+1";
         [self.reviewIcon setHidden:NO];
         self.reviewIcon.image = [UIImage imageNamed:@"PointLikeHead"];
-        self.userState.textColor = kColorBrandGreen;
+        self.userState.textColor = kColorBrandBlue;
     } else {
         [self.reviewIcon setHidden:YES];
         self.userState.text = @"未评审";
-        self.userState.textColor = kColor999;
+        self.userState.textColor = kColorDark7;
     }
     
 }
@@ -43,7 +43,7 @@
     self.userName.text = reviewer.name;
     if([likeValue isEqual:@100]) {
         self.userState.text = @"+1";
-        self.userState.textColor = kColorBrandGreen;
+        self.userState.textColor = kColorBrandBlue;
     }
     
 }
@@ -58,7 +58,7 @@
 }
 
 + (CGFloat)cellHeight{
-    return 44.0;
+    return 60.0;
 }
 
 @end

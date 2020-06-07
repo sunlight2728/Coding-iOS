@@ -33,7 +33,7 @@
     if (self) {
         // Initialization code
         if (!_projectIconView) {
-            _projectIconView = [[UIImageView alloc] initWithFrame:CGRectMake(12, 12, kIconSize, kIconSize)];
+            _projectIconView = [[YLImageView alloc] initWithFrame:CGRectMake(12, 12, kIconSize, kIconSize)];
             _projectIconView.layer.masksToBounds = YES;
             _projectIconView.layer.cornerRadius = 2.0;
             [self.contentView addSubview:_projectIconView];
@@ -187,7 +187,7 @@
     _forkL.text = _project.fork_count.stringValue;
 
     NSString *titleStr=[NSString stringWithFormat:@"%@ 最后更新于 %@",_project.owner_user_name,[_project.updated_at stringDisplay_HHmm]];
-    _ownerTitleLabel.attributedText = [NSString getAttributeFromText:titleStr emphasize:_project.owner_user_name emphasizeColor:kColorBrandGreen];
+    _ownerTitleLabel.attributedText = [NSString getAttributeFromText:titleStr emphasize:_project.owner_user_name emphasizeColor:kColorLinkBlue];
 
     
     //hasSWButtons
@@ -216,15 +216,9 @@
 
 - (NSArray *)rightButtons{
     NSMutableArray *rightUtilityButtons = [NSMutableArray new];
-    //    [rightUtilityButtons sw_addUtilityButtonWithColor:[UIColor colorWithHexString:_project.pin.boolValue? @"0xe6e6e6": @"0x3bbd79"]
-    //                                                 icon:[UIImage imageNamed:_project.pin.boolValue? @"icon_project_cell_pin": @"icon_project_cell_nopin"]];
-    [rightUtilityButtons sw_addUtilityButtonWithColor:_project.pin.boolValue? kColorTableSectionBg: kColorBrandGreen
+    [rightUtilityButtons sw_addUtilityButtonWithColor:_project.pin.boolValue? kColorTableSectionBg: kColorBrandBlue
                                                 title:_project.pin.boolValue?@"取消常用":@"设置常用"
-                                           titleColor:_project.pin.boolValue? kColorBrandGreen: [UIColor whiteColor]];
-
-//    [rightUtilityButtons sw_addUtilityButtonWithColor:[UIColor colorWithHexString:_project.pin.boolValue? @"0xeeeeee": @"0x3bbd79"]
-//                                                title:_project.pin.boolValue?@"取消常用":@"设置常用" titleColor:[UIColor colorWithHexString:_project.pin.boolValue?@"0x3bbd79":@"0xffffff"]];
-    
+                                           titleColor:_project.pin.boolValue? kColorBrandBlue: [UIColor whiteColor]];    
     return rightUtilityButtons;
 }
 

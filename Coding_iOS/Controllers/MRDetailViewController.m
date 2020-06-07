@@ -8,7 +8,7 @@
 
 
 
-#define kMRPRDetailViewController_BottomViewHeight 49.0
+#define kMRPRDetailViewController_BottomViewHeight 56.0
 #import "MRDetailViewController.h"
 #import "PRDetailViewController.h"
 #import "ReviewerListController.h"
@@ -110,6 +110,9 @@ typedef NS_ENUM(NSInteger, MRPRAction) {
         [tableView mas_makeConstraints:^(MASConstraintMaker *make) {
             make.edges.equalTo(self.view);
         }];
+        tableView.estimatedRowHeight = 0;
+        tableView.estimatedSectionHeaderHeight = 0;
+        tableView.estimatedSectionFooterHeight = 0;
         tableView;
     });
     _myRefreshControl = [[ODRefreshControl alloc] initInScrollView:self.myTableView];
@@ -122,9 +125,9 @@ typedef NS_ENUM(NSInteger, MRPRAction) {
 
 - (void)configBottomView{
     BOOL canCancel = [self.curPreMRPRInfo.mrpr.author.global_key isEqualToString:[Login curLoginUser].global_key];
-    BOOL canAction = self.curPreMRPRInfo.can_edit.boolValue ||(canCancel && self.curPreMRPRInfo.mrpr.granted.boolValue);//有权限 || （作者身份 && 被授权）
-    BOOL canAuthorization  = self.curPreMRPRInfo.can_edit.boolValue &&!canCancel &&!self.curPreMRPRInfo.author_can_edit.boolValue && !self.curPreMRPRInfo.mrpr.granted.boolValue;
-    BOOL canCancelAuthorization = self.curPreMRPRInfo.can_edit.boolValue &&!canCancel &&!self.curPreMRPRInfo.author_can_edit.boolValue && self.curPreMRPRInfo.mrpr.granted.boolValue;
+    BOOL canAction = (self.curPreMRPRInfo.can_merge.boolValue || self.curPreMRPRInfo.can_edit.boolValue) ||(canCancel && self.curPreMRPRInfo.mrpr.granted.boolValue);//有权限 || （作者身份 && 被授权）
+    BOOL canAuthorization  = NO;//NO 不是说不可以，只是说不要这按钮了
+    BOOL canCancelAuthorization = NO;//NO 不是说不可以，只是说不要这按钮了
     BOOL hasBottomView = self.curMRPRInfo.mrpr.status <= MRPRStatusCannotMerge && (canAction || canCancel);
     if(self.curMRPRInfo == nil || self.curPreMRPRInfo == nil) {
         hasBottomView = NO ;
@@ -144,7 +147,7 @@ typedef NS_ENUM(NSInteger, MRPRAction) {
             NSArray *buttonArray;
             if (canAction && canCancel) {//三个按钮
                 buttonArray = @[ [self buttonWithType:MRPRActionCancel],
-                                [self buttonWithType:MRPRActionRefuse],
+//                                [self buttonWithType:MRPRActionRefuse],
                                 [self buttonWithType:MRPRActionAccept]];
             } else if (canAction && !canCancel){//两个按钮
                 if(canAuthorization) {
@@ -168,7 +171,7 @@ typedef NS_ENUM(NSInteger, MRPRAction) {
                 buttonArray = nil;
             }
             if (buttonArray.count > 0) {
-                CGFloat buttonHeight = 29;
+                CGFloat buttonHeight = 36;
                 CGFloat padding = 15;
                 CGFloat buttonWidth = ((kScreen_Width - 2*kPaddingLeftWidth) - padding* (buttonArray.count -1))/buttonArray.count;
                 CGFloat buttonY = (kMRPRDetailViewController_BottomViewHeight - buttonHeight)/2;
@@ -206,11 +209,9 @@ typedef NS_ENUM(NSInteger, MRPRAction) {
 
 - (void)updateProjectStatus {
     __weak typeof(self) weakSelf = self;
-    [[Coding_NetAPIManager sharedManager] request_MRPRPreInfo_WithObj:_curMRPR andBlock:^(MRPRBaseInfo *data, NSError *error) {
-        [weakSelf.view endLoading];
-        [weakSelf.myRefreshControl endRefreshing];
+    [[Coding_NetAPIManager sharedManager] request_MRPRPreInfo_WithObj:_curMRPR andBlock:^(MRPRPreInfo *data, NSError *error) {
         if (data) {
-            weakSelf.curPreMRPRInfo = (MRPRPreInfo*)data;
+            weakSelf.curPreMRPRInfo = data;
             [weakSelf.myTableView reloadData];
             [weakSelf configBottomView];
         }
@@ -258,7 +259,6 @@ typedef NS_ENUM(NSInteger, MRPRAction) {
     }];
     //项目成员
     [[Coding_NetAPIManager sharedManager] request_ProjectMembers_WithObj:self.curProject andBlock:^(id data, NSError *error) {
-        [weakSelf.view endLoading];
         if (data) {
             NSMutableArray* projectUsers = data;
             weakSelf.projectUsers = projectUsers;
@@ -266,8 +266,6 @@ typedef NS_ENUM(NSInteger, MRPRAction) {
     }];
     //MR 评审者
     [[Coding_NetAPIManager sharedManager] request_MRReviewerInfo_WithObj:_curMRPR andBlock:^(ReviewersInfo *data, NSError *error) {
-        [weakSelf.view endLoading];
-        [weakSelf.myRefreshControl endRefreshing];
         if (data) {
             weakSelf.curReviewersInfo = data;
         }
@@ -306,29 +304,28 @@ typedef NS_ENUM(NSInteger, MRPRAction) {
     curButton.layer.cornerRadius = 2.0;
     curButton.tag = actionType;
     [curButton addTarget:self action:@selector(actionMRPR:) forControlEvents:UIControlEventTouchUpInside];
-    [curButton.titleLabel setFont:[UIFont systemFontOfSize:13]];
+    [curButton.titleLabel setFont:[UIFont systemFontOfSize:15]];
     NSString *title, *colorStr;
     if (actionType == MRPRActionAccept) {
         title = @"合并";
-        colorStr = @"0x4E90BF";
+        colorStr = @"0x425063";
         if (_curMRPRInfo.mrpr.status == MRPRStatusCannotMerge) {
             curButton.alpha = 0.5;
         }
     } else if (actionType == MRPRActionRefuse){
         title = @"拒绝";
-        colorStr = @"0xE15957";
+        colorStr = @"0xF56061";
     } else if (actionType == MRPRActionCancel){
         title = @"取消";
-        colorStr = @"0xF8F8F8";
-        [curButton doBorderWidth:0.5 color:[UIColor colorWithHexString:@"0xB5B5B5"] cornerRadius:2.0];
+        colorStr = @"0xD8DDE4";
     } else if(actionType == MRPRActionAuthorization) {
         title = @"授权";
-        colorStr = @"0x38BD78";
+        colorStr = @"0x4F95E8";
     } else if(actionType == MRPRActionCancelAuthorization) {
         title = @"取消授权";
-        colorStr = @"0x38BD78";
+        colorStr = @"0x4F95E8";
     }
-    [curButton setTitleColor:[UIColor colorWithHexString:(actionType == MRPRActionCancel? @"0x222222": @"0xffffff")] forState:UIControlStateNormal];
+    [curButton setTitleColor:[UIColor colorWithHexString:(actionType == MRPRActionCancel? @"0x323A45": @"0xFFFFFF")] forState:UIControlStateNormal];
     [curButton setTitle:title forState:UIControlStateNormal];
     [curButton setBackgroundColor:[UIColor colorWithHexString:colorStr]];
     return curButton;
@@ -339,7 +336,7 @@ typedef NS_ENUM(NSInteger, MRPRAction) {
     NSString *tipStr;
     if (sender.tag == MRPRActionAccept) {//合并
         if (_curMRPRInfo.mrpr.status == MRPRStatusCannotMerge) {//不能合并
-            tipStr = @"Coding 不能帮你在线自动合并这个合并请求。";
+            tipStr = @"CODING 不能帮你在线自动合并这个合并请求。";
             kTipAlert(@"%@", tipStr);
         } else {
             MRPRAcceptViewController *vc = [MRPRAcceptViewController new];
@@ -354,28 +351,28 @@ typedef NS_ENUM(NSInteger, MRPRAction) {
         }
     } else if (sender.tag == MRPRActionRefuse){//拒绝
         tipStr = [_curMRPRInfo.mrpr isMR]? @"确定要拒绝这个 Merge Request 么？": @"确定要拒绝这个 Pull Request 么？";
-        [[UIActionSheet bk_actionSheetCustomWithTitle:tipStr buttonTitles:@[@"确定"] destructiveTitle:nil cancelTitle:@"取消" andDidDismissBlock:^(UIActionSheet *sheet, NSInteger index) {
+        [[UIAlertController ea_actionSheetCustomWithTitle:tipStr buttonTitles:@[@"确定"] destructiveTitle:nil cancelTitle:@"取消" andDidDismissBlock:^(UIAlertAction *action, NSInteger index) {
             if (index == 0) {
                 [weakSelf refuseMRPR];
             }
         }] showInView:self.view];
     } else if (sender.tag == MRPRActionCancel){//取消
         tipStr = [_curMRPRInfo.mrpr isMR]? @"确定要取消这个 Merge Request 么？": @"确定要取消这个 Pull Request 么？";
-        [[UIActionSheet bk_actionSheetCustomWithTitle:tipStr buttonTitles:@[@"确定"] destructiveTitle:nil cancelTitle:@"取消" andDidDismissBlock:^(UIActionSheet *sheet, NSInteger index) {
+        [[UIAlertController ea_actionSheetCustomWithTitle:tipStr buttonTitles:@[@"确定"] destructiveTitle:nil cancelTitle:@"取消" andDidDismissBlock:^(UIAlertAction *action, NSInteger index) {
             if (index == 0) {
                 [weakSelf cancelMRPR];
             }
         }] showInView:self.view];
     } else if(sender.tag == MRPRActionAuthorization) {
         tipStr = [_curMRPRInfo.mrpr isMR]? @"确定要授权这个 Merge Request 么？": @"确定要授权这个 Pull Request 么？";
-        [[UIActionSheet bk_actionSheetCustomWithTitle:tipStr buttonTitles:@[@"确定"] destructiveTitle:nil cancelTitle:@"取消" andDidDismissBlock:^(UIActionSheet *sheet, NSInteger index) {
+        [[UIAlertController ea_actionSheetCustomWithTitle:tipStr buttonTitles:@[@"确定"] destructiveTitle:nil cancelTitle:@"取消" andDidDismissBlock:^(UIAlertAction *action, NSInteger index) {
             if (index == 0) {
                 [weakSelf authorizationMRPR];
             }
         }] showInView:self.view];
     } else if(sender.tag == MRPRActionCancelAuthorization) {
         tipStr = [_curMRPRInfo.mrpr isMR]? @"确定要取消授权这个 Merge Request 么？": @"确定要取消授权这个 Pull Request 么？";
-        [[UIActionSheet bk_actionSheetCustomWithTitle:tipStr buttonTitles:@[@"确定"] destructiveTitle:nil cancelTitle:@"取消" andDidDismissBlock:^(UIActionSheet *sheet, NSInteger index) {
+        [[UIAlertController ea_actionSheetCustomWithTitle:tipStr buttonTitles:@[@"确定"] destructiveTitle:nil cancelTitle:@"取消" andDidDismissBlock:^(UIAlertAction *action, NSInteger index) {
             if (index == 0) {
                 [weakSelf cancelAuthorizationMRPR];
             }
@@ -408,10 +405,6 @@ typedef NS_ENUM(NSInteger, MRPRAction) {
     [[Coding_NetAPIManager sharedManager] request_MRPRAuthorization:_curMRPRInfo.mrpr andBlock:^(id data, NSError *error) {
         if (data) {
             weakSelf.curPreMRPRInfo.mrpr.granted = @1;
-//            weakSelf.bottomView = nil;
-            [weakSelf refresh];
-            [weakSelf.myTableView reloadData];
-            [weakSelf configBottomView];
         }
     }];
 }
@@ -421,17 +414,13 @@ typedef NS_ENUM(NSInteger, MRPRAction) {
     [[Coding_NetAPIManager sharedManager] request_MRPRCancelAuthorization:_curMRPRInfo.mrpr andBlock:^(id data, NSError *error) {
         if (data) {
             weakSelf.curPreMRPRInfo.mrpr.granted = @0;
-//            weakSelf.bottomView = nil;
-            [weakSelf refresh];
-            [weakSelf.myTableView reloadData];
-            [weakSelf configBottomView];
         }
     }];
 }
 
 #pragma mark TableM Footer Header
 - (CGFloat)tableView:(UITableView *)tableView heightForFooterInSection:(NSInteger)section{
-    return 20.0;
+    return 15.0;
 }
 - (CGFloat)tableView:(UITableView *)tableView heightForHeaderInSection:(NSInteger)section{
     return 0.5;
@@ -525,9 +514,12 @@ typedef NS_ENUM(NSInteger, MRPRAction) {
                 [cell setImageStr:@"PRReviewer" isowner:NO hasLikeMr:self.isLike];
                 
             }
-            if (self.curMRPRInfo.mrpr.status == MRPRStatusAccepted || self.curMRPRInfo.mrpr.status == MRPRStatusRefused || self.curMRPRInfo.mrpr.status == MRPRStatusRefused) {
+            if (self.curMRPRInfo.mrpr.status == MRPRStatusAccepted || self.curMRPRInfo.mrpr.status == MRPRStatusRefused) {
                 [cell cantReviewer];
             }
+            cell.rightSideClickedBlock = ^(){
+                [weakSelf jiaYi];
+            };
             [tableView addLineforPlainCell:cell forRowAtIndexPath:indexPath withLeftSpace:50];
             return cell;
         }else {
@@ -540,6 +532,9 @@ typedef NS_ENUM(NSInteger, MRPRAction) {
                 [tmpReviewers addObject:self.curReviewersInfo.volunteer_reviewers[i]];
             }
             [cell initCellWithReviewers:tmpReviewers];
+            cell.lastItemClickedBlock = ^(){
+                [weakSelf goToReviewerList];
+            };
             [tableView addLineforPlainCell:cell forRowAtIndexPath:indexPath withLeftSpace:50];
             return cell;
         }
@@ -567,6 +562,46 @@ typedef NS_ENUM(NSInteger, MRPRAction) {
     }
 }
 
+- (void)jiaYi{
+    if (self.curMRPRInfo.mrpr.status == MRPRStatusAccepted || self.curMRPRInfo.mrpr.status == MRPRStatusRefused) {
+        return;
+    }
+    if([self CurrentUserIsOwer]) {
+        NSArray  *apparray= [[NSBundle mainBundle]loadNibNamed:@"AddReviewerViewController" owner:nil options:nil];
+        AddReviewerViewController *appview=[apparray firstObject];
+        appview.currentProject = self.curProject;
+        appview.curMRPR = self.curMRPR;
+        [self.navigationController pushViewController:appview animated:YES];
+    } else {
+        __weak typeof(self) weakSelf = self;
+        if ([self.isLike isEqual:@0]) {
+            [[CodingNetAPIClient sharedJsonClient] requestJsonDataWithPath:self.reviewGoodPath withParams:nil withMethodType:Delete andBlock:^(id data, NSError *error) {
+                weakSelf.isLike = @1;
+                [weakSelf refresh];
+                if (weakSelf.curPreMRPRInfo.can_grant.boolValue) {
+                    [weakSelf cancelAuthorizationMRPR];
+                }
+            }];
+        } else {
+            [[CodingNetAPIClient sharedJsonClient] requestJsonDataWithPath:self.reviewGoodPath withParams:nil withMethodType:Post andBlock:^(id data, NSError *error) {
+                weakSelf.isLike = @0;
+                [weakSelf refresh];
+                if (weakSelf.curPreMRPRInfo.can_grant.boolValue) {
+                    [weakSelf authorizationMRPR];
+                }
+            }];
+        }
+    }
+}
+
+- (void)goToReviewerList{
+    NSArray  *apparray= [[NSBundle mainBundle]loadNibNamed:@"ReviewerListController" owner:nil options:nil];
+    ReviewerListController *appview=[apparray firstObject];
+    appview.currentProject = self.curProject;
+    appview.curMRPR = self.curMRPR;
+    appview.isPublisher = [self currentUserCanAddMember];
+    [self.navigationController pushViewController:appview animated:YES];
+}
 
 - (BOOL)CurrentUserIsOwer{
     User *currentUser = [Login curLoginUser];
@@ -585,7 +620,7 @@ typedef NS_ENUM(NSInteger, MRPRAction) {
             return NO;
         }
     }
-    if (self.curMRPRInfo.mrpr.status == MRPRStatusAccepted || self.curMRPRInfo.mrpr.status == MRPRStatusRefused || self.curMRPRInfo.mrpr.status == MRPRStatusRefused) {
+    if (self.curMRPRInfo.mrpr.status == MRPRStatusAccepted || self.curMRPRInfo.mrpr.status == MRPRStatusRefused) {
         return NO;
     }
     return YES;
@@ -657,38 +692,6 @@ typedef NS_ENUM(NSInteger, MRPRAction) {
             [self.navigationController pushViewController:vc animated:YES];
         }
     } else if (indexPath.section == 2){//Disclosure
-        if (indexPath.row == 0) {
-            if (self.curMRPRInfo.mrpr.status == MRPRStatusAccepted || self.curMRPRInfo.mrpr.status == MRPRStatusRefused || self.curMRPRInfo.mrpr.status == MRPRStatusRefused) {
-                return;
-            }
-            if([self CurrentUserIsOwer]) {
-                NSArray  *apparray= [[NSBundle mainBundle]loadNibNamed:@"AddReviewerViewController" owner:nil options:nil];
-                AddReviewerViewController *appview=[apparray firstObject];
-                appview.currentProject = self.curProject;
-                appview.curMRPR = self.curMRPR;
-                [self.navigationController pushViewController:appview animated:YES];
-            } else {
-                __weak typeof(self) weakSelf = self;
-                if ([self.isLike isEqual:@0]) {
-                    [[CodingNetAPIClient sharedJsonClient] requestJsonDataWithPath:self.reviewGoodPath withParams:nil withMethodType:Delete andBlock:^(id data, NSError *error) {
-                        weakSelf.isLike = @1;
-                        [weakSelf refresh];
-                    }];
-                } else {
-                    [[CodingNetAPIClient sharedJsonClient] requestJsonDataWithPath:self.reviewGoodPath withParams:nil withMethodType:Post andBlock:^(id data, NSError *error) {
-                         weakSelf.isLike = @0;
-                        [weakSelf refresh];
-                    }];
-                }
-            }
-        } else {
-            NSArray  *apparray= [[NSBundle mainBundle]loadNibNamed:@"ReviewerListController" owner:nil options:nil];
-            ReviewerListController *appview=[apparray firstObject];
-            appview.currentProject = self.curProject;
-            appview.curMRPR = self.curMRPR;
-            appview.isPublisher = [self currentUserCanAddMember];
-            [self.navigationController pushViewController:appview animated:YES];
-        }
     } else if (self.activityList.count > 0 && indexPath.section == 3){//Comment
         ProjectLineNote *curCommentItem = self.activityList[indexPath.row];
         if ([curCommentItem.action isEqual:@"mergeChanges"]) {

@@ -258,6 +258,9 @@
             tableView.dataSource = self;
             tableView.separatorStyle = UITableViewCellSeparatorStyleNone;
             [tableView registerClass:[TopicPreviewCell class] forCellReuseIdentifier:kCellIdentifier_TopicPreviewCell];
+            tableView.estimatedRowHeight = 0;
+            tableView.estimatedSectionHeaderHeight = 0;
+            tableView.estimatedSectionFooterHeight = 0;
             tableView;
         });
         
@@ -279,7 +282,8 @@
 - (void)addtitleBtnClick
 {
     EditLabelViewController *vc = [[EditLabelViewController alloc] init];
-    vc.curProject = _curProTopic.project;
+//    vc.curProject = _curProTopic.project;
+    vc.curProject = _curProTopic.project ?: ({Project *p = [Project new]; p.id = _curProTopic.project_id; p;});
     vc.orignalTags = _curProTopic.mdLabels;
     @weakify(self);
     vc.tagsSelectedBlock = ^(EditLabelViewController *vc, NSMutableArray *selectedTags){

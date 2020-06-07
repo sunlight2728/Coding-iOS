@@ -82,12 +82,11 @@
     });
     
     UIBarButtonItem *addBar = [[UIBarButtonItem alloc] initWithImage:[UIImage imageNamed:@"addBtn_Nav"] style:UIBarButtonItemStylePlain target:self action:@selector(addItemClicked:)];
-     UIBarButtonItem *screenBar = [self HDCustomNavButtonWithTitle:nil imageName:@"task_filter_nav_unchecked" target:self action:@selector(screenItemClicked:)];
+    UIBarButtonItem *screenBar = [[UIBarButtonItem alloc] initWithImage:[UIImage imageNamed:@"task_filter_nav_unchecked"] style:UIBarButtonItemStylePlain target:self action:@selector(screenItemClicked:)];
     self.navigationItem.rightBarButtonItems = @[addBar, screenBar];
     
-    
     //初始化过滤目录
-    _myFliterMenu = [[TaskSelectionView alloc] initWithFrame:CGRectMake(0, 64, kScreen_Width, kScreen_Height - 64) items:@[@"我的任务（0）", @"我关注的（0）", @"我创建的（0）"]];
+    _myFliterMenu = [[TaskSelectionView alloc] initWithFrame:CGRectMake(0, 44 + kSafeArea_Top, kScreen_Width, kScreen_Height - (44 + kSafeArea_Top)) items:@[@"我的任务（0）", @"我关注的（0）", @"我创建的（0）"]];
     __weak typeof(self) weakSelf = self;
     _myFliterMenu.clickBlock = ^(NSInteger pageIndex){
         _role = pageIndex;
@@ -109,13 +108,13 @@
                                       [NSString stringWithFormat:@"已完成的（0）"]
                                       ];
     _screenView.selectBlock = ^(NSString *keyword, NSString *status, NSString *label) {
-        [((UIButton *)screenBar.customView) setImage:[UIImage imageNamed:@"task_filter_nav_checked"] forState:UIControlStateNormal];
         weakSelf.keyword = keyword;
         weakSelf.status = status;
         weakSelf.label = label;
         if (keyword == nil && status == nil && label == nil) {
-            [((UIButton *)screenBar.customView) setImage:[UIImage imageNamed:@"task_filter_nav_unchecked"] forState:UIControlStateNormal];
-
+            screenBar.image = [[UIImage imageNamed:@"task_filter_nav_unchecked"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+        }else{
+            screenBar.image = [[UIImage imageNamed:@"task_filter_nav_checked"] imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
         }
         ProjectTaskListView *listView = (ProjectTaskListView *)weakSelf.myCarousel.currentItemView;
         [weakSelf assignmentWithlistView:listView];
@@ -165,6 +164,9 @@
 
 
 - (void)resetCurView{
+    if (!_mySegmentControl) {
+        [self configSegmentControlWithData:nil];
+    }
     if (!_myProjects.isLoading) {
         __weak typeof(self) weakSelf = self;
         [[Coding_NetAPIManager sharedManager] request_ProjectsHaveTasks_WithObj:_myProjects andBlock:^(id data, NSError *error) {
@@ -241,7 +243,7 @@
     [oldProSet removeObject:@(-1)];//代表「全部项目」的 id 号
     BOOL dataHasChanged = ![oldProSet isEqualToSet:freshProSet];
     
-    if (dataHasChanged) {
+    if (dataHasChanged || !_mySegmentControl) {
         self.myProjectList = [[NSMutableArray alloc] initWithObjects:[Project project_All], nil];
         [self.myProjectList addObjectsFromArray:freshProjects.list];
         
@@ -355,34 +357,6 @@
     }else {
         [_myFliterMenu showMenuAtView:kKeyWindow];
     }
-
-    
-}
-
-- (UIBarButtonItem *)HDCustomNavButtonWithTitle:(NSString *)title imageName:(NSString *)imageName target:(id)targe action:(SEL)action {
-    UIButton *itemButtom = [UIButton buttonWithType:UIButtonTypeCustom];
-    UIImage *image = [UIImage imageNamed:imageName];
-    [itemButtom setImage:image forState:UIControlStateNormal];
-    itemButtom.titleLabel.font = [UIFont systemFontOfSize: 16];
-    [itemButtom setTitle:title forState:UIControlStateNormal];
-    [itemButtom setTitleEdgeInsets:UIEdgeInsetsMake(0, 5, 0, -5)];
-    UIColor *color = [UINavigationBar appearance].titleTextAttributes[NSForegroundColorAttributeName];
-    if (color == nil) {
-        color = [UIColor blackColor];
-    }
-    [itemButtom setTitleColor:color forState:UIControlStateNormal];
-    itemButtom.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
-    [itemButtom addTarget:targe action:action
-         forControlEvents:UIControlEventTouchUpInside];
-    if (title == nil && imageName != nil) {
-        [itemButtom setFrame:CGRectMake(0, 0, image.size.width, image.size.height)];
-    } else {
-        [itemButtom setFrame:CGRectMake(0, 0, 80, 40)];
-    }
-    
-    UIBarButtonItem *barButtonItem = [[UIBarButtonItem alloc]
-                                      initWithCustomView:itemButtom];
-    return barButtonItem;
 }
 
 - (void)assignmentWithlistView:(ProjectTaskListView *)listView {
